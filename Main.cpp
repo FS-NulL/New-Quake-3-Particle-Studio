@@ -56,14 +56,6 @@ void strLower(char *s);
 bool textureNameBoxChanged(char *str);
 userEntry entry;
 
-void wait ( int seconds )
-{
-  clock_t endwait;
-  endwait = clock () + seconds;
-  while (clock() < endwait) {}
-}
-
-
 class ENTITIES 
 {
     class ENT 
