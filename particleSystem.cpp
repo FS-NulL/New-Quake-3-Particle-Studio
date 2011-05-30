@@ -58,7 +58,8 @@ particleSystem::particleSystem()
   startStretch = 1;
   endStretch = 1;
   fireworkMode = false;
-  sort=0;
+  sort = 0;
+  zBase = 0;
 }
 
 int particleSystem::buildParticles()
@@ -306,7 +307,7 @@ void particleSystem::getPositionVector(int i, float &x, float &y, float &z)
   y =  ( (float)(particles[i].aYRatio * particles[i].radius) * waveform(xyWaveform, particles[i].emitterXYBase, particles[i].ampxy , particles[i].phase+xyPhase, hz, timeN )  );
   // SIN
   //z = (int) (particles[i].height * sin( 2*PI* normalise( hz*timeN + particles[i].phase) ) );
-  z =  (particles[i].height * waveform(zWaveform, particles[i].emitterZBase, particles[i].ampz, particles[i].phase, hz, timeN));
+  z =  (particles[i].height * waveform(zWaveform, particles[i].emitterZBase+zBase, particles[i].ampz, particles[i].phase, hz, timeN));
   
 }
 
@@ -513,7 +514,7 @@ bool particleSystem::buildShaderFile(char *filename)
       else if (zWaveform == WAVE_TRIANGLE) outFile << "triangle ";
       else if (zWaveform == WAVE_SAWTOOTH) outFile << "sawtooth ";
       else if (zWaveform == WAVE_INVSAWTOOTH) outFile << "inversesawtooth ";
-      outFile << particles[i].emitterZBase << ' ' << particles[i].ampz << ' '<< particles[i].phase << ' ' << hz << '\n';
+      outFile << particles[i].emitterZBase+zBase << ' ' << particles[i].ampz << ' '<< particles[i].phase << ' ' << hz << '\n';
       
       // XY Plane Movement
       // Deformvertexes X Y 0 wave FUNC 0 1 phase hz

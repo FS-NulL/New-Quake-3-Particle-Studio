@@ -263,7 +263,7 @@ int ENTITIES::drawAll()  // Returns last ent location +1
     if (ents[loc].entPtr != 0)
     {
       baseEnt *p = ents[loc].entPtr;
-      /*if (c!=active)*/ (*p).draw();   // Horrible Hack, something is corrupting the active variable
+      if (c!=active) (*p).draw();   // Horrible Hack, something is corrupting the active variable
       c++;
     }
     loc++;
@@ -362,6 +362,7 @@ horizSlider sliderPSize;
 horizSlider sliderHeight;
 horizSlider sliderHeightVar;
 horizSlider sliderEmitterZ;
+horizSlider sliderZBase;
 button butNatH;
 horizSlider sliderFreq;
 button butNatF;
@@ -833,6 +834,13 @@ int frequencyChange(int f)
   systems[activePS].ps.setFrequency((float) f/10000);
   systems[activePS].ps.buildParticles();
   return 0;
+}
+
+int zBaseChange(int zb)
+{
+	systems[activePS].ps.zBase = ((float) zb)/10000;
+	systems[activePS].ps.buildParticles();
+	return 0;
 }
 
 int phaseGChange(int pg)
@@ -2426,6 +2434,7 @@ bool saveStateToFile(char *filename,std::ofstream &oFile)
     oFile.write( (const char*) &bgblue, sizeof(float) );
     bool fire = systems[activePS].ps.getFireworkMode();
     oFile.write( (const char*) &fire, sizeof(bool) );
+	oFile.write( (const char*) &sliderZBase.value, sizeof(int));
     //oFile.close();
     
     return true;
@@ -3136,6 +3145,13 @@ bool loadStateFromFile(char *filename, particleSystem &ps,std::ifstream &iFile)
         toggleFirework();
       }
     }
+
+	if (status)
+	{
+		iFile.read( (char*) &value, sizeof(value));
+		systems[activePS].ps.zBase = ((float)value)/10000;
+		if (iFile.eof() ) status = false;
+	}
     
     systems[activePS].ps.buildParticles();
     return status;
@@ -4191,8 +4207,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
   
   // Height
   
-  
-  
   sliderHeight.location.x = 70;
   sliderHeight.location.y = 75;
   sliderHeight.size.x = 140;
@@ -4327,7 +4341,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
   
   sliderPG.location.x = 400;
   sliderPG.location.y = 50;
-  sliderPG.size.x = 110;
+  sliderPG.size.x = 65;
   sliderPG.setBounds(0,10000*5,10000);
   sliderPG.setIntermediatePosition( sliderPG.size.x / 2);
   sliderPG.setValue((int)(10000*systems[activePS].ps.getPhaseGrouping()));
@@ -4347,6 +4361,29 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
   sliderPG.setType(TYPE_FLOAT);
   
   tabDyn1.bindEnt(&sliderPG);
+
+  sliderZBase.location.x = 560;
+  sliderZBase.location.y = 50;
+  sliderZBase.size.x = 30;
+  sliderZBase.setBounds(-10000,10000,0);
+  sliderZBase.setIntermediatePosition(sliderZBase.size.x/2);
+  sliderZBase.setValue((int)(10000*systems[activePS].ps.zBase));
+  sliderZBase.setOnChange(zBaseChange);
+  sliderZBase.setLabelName("zBase");
+
+  sliderZBase.l_name.location.x = sliderZBase.location.x;
+  sliderZBase.l_name.location.y = sliderZBase.location.y;
+  sliderZBase.l_name.txtSize = sliderZBase.size.y;
+  sliderZBase.useLabelName = true;
+
+  sliderZBase.l_value.location.x = sliderZBase.location.x + sliderZBase.size.x;
+  sliderZBase.l_value.location.y = sliderZBase.location.y;
+  sliderZBase.l_value.txtSize = sliderZBase.size.y;
+  sliderZBase.useLabelValue = true; 
+
+  sliderZBase.setType(TYPE_FLOAT);
+  tabDyn1.bindEnt(&sliderZBase);
+
   
   // Master Phase Slider
   
@@ -5278,7 +5315,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
       	  // then pop transform matrix      	  
       	  
           //glTranslatef(((float)pos.x),((float)pos.y),0.0f);
-          glTranslatef(0.0f, -30.0f * zoom, -512.0f * zoom); // Back and down a bit
+          glTranslatef(0.0f, -180.0f * zoom * systems[activePS].ps.zBase + -30.0f * zoom, -512.0f * zoom); // Back and down a bit
           glRotatef(viewxrot, 1.0f, 0.0f, 0.0f); // Pan up/down
           glRotatef(viewyrot, 0.0f, 1.0f, 0.0f);  // Pan Arround
           //glRotatef(180, (float)viewxrot/(float)180, (float)viewyrot/(float)180, 0.0f);  // Pan Arround

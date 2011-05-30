@@ -67,6 +67,7 @@ class particleSystem {
   float startStretch;
   float endStretch;
   
+  
   bool fireworkMode;
   
   class particle {
@@ -119,6 +120,7 @@ class particleSystem {
   void rotateTex(float &x1,float &x2,float &x3,float &x4,float &y1,float &y2,float &y3,float &y4,float angle);
   
   char sort;
+  float zBase;
   int numParticles;
   int srcBlend;
   int dstBlend;
