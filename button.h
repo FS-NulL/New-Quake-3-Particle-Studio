@@ -25,6 +25,7 @@ class button : public baseEnt
    button();
   ~button();
   int draw();
+  bool renderable;
   int forceUnActive();
   bool useLabelName;
   label l_name;

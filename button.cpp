@@ -10,6 +10,8 @@ button::button()
   active = false;
   hoverActive = false;
   
+  renderable = true;
+  
   location.x = 275; 
   location.y = 75;
   size.x = 12;
@@ -33,7 +35,7 @@ button::button()
   l_name.location.y = location.y;
   l_name.alignment = ALIGN_RIGHT;
   
-  l_name.txtSize = size.y;
+  l_name.txtSize = (float)size.y;
   
 }
 
@@ -43,6 +45,7 @@ button::~button()
 
 int button::draw()
 {
+  if (!renderable) return -1;
   glBegin(GL_QUADS);
         //BackGround
         glColor3f( 

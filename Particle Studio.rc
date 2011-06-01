@@ -73,7 +73,7 @@ BEGIN
             VALUE "FileDescription", "FS Particle Studio"
             VALUE "FileVersion", "2, 0, 0, 2"
             VALUE "InternalName", "FSPS2"
-            VALUE "LegalCopyright", "Copyright (C) 2010"
+            VALUE "LegalCopyright", "Copyright (C) 2011"
             VALUE "OriginalFilename", "FS Particle Studio 2.exe"
             VALUE "ProductName", "FS Particle Studio 2"
             VALUE "ProductVersion", "2, 0, 0, 2"

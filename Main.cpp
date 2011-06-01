@@ -146,6 +146,7 @@ int ENTITIES::eventRelay(UINT message,WPARAM key,int mousex,int mousey)
 {
  
     int temp_active = active;
+	baseEnt* ePtr = ents[temp_active].entPtr;
     // if active allready, send message strait to ent
     // then if message is mouseup set active to -1
     //std::ofstream oFile("events.txt",std::ios::app);
@@ -160,6 +161,12 @@ int ENTITIES::eventRelay(UINT message,WPARAM key,int mousex,int mousey)
       //oFile.flush();
         // Send Event Direct
         ents[temp_active].eventRelay(message,key,mousex,mousey);
+		// if the current entPtr has become corrupt during the event handling, return imediatly, reseting active hoveractive to -1
+		if (ents[temp_active].entPtr == 0)
+		{
+			active = hoverActive = lastActive = -1;
+			return -1;
+		}
         //oFile << "AFTER ENT RELAY ACTIVE: " << temp_active << '\n';
         //oFile.flush();
         // If LMB UP  set active to -1
@@ -263,7 +270,7 @@ int ENTITIES::drawAll()  // Returns last ent location +1
     if (ents[loc].entPtr != 0)
     {
       baseEnt *p = ents[loc].entPtr;
-      if (c!=active) (*p).draw();   // Horrible Hack, something is corrupting the active variable
+      if (c!=active) (*p).draw();   // Horrible Hack, something is corrupting the active variable -- the the processes of unbinding the systems button
       c++;
     }
     loc++;
@@ -411,14 +418,19 @@ label BGName2;
 label BGName3;
 label BGName4;
 
-horizSlider BGx1,BGy1,BGz1;
+horizSlider BGx1,BGy1,BGz1;		// Positions
 horizSlider BGx2,BGy2,BGz2;
 horizSlider BGx3,BGy3,BGz3;
 horizSlider BGx4,BGy4,BGz4;
 
+horizSlider BGrx1,BGry1,BGrz1;	//System rotations
+horizSlider BGrx2,BGry2,BGrz2;
+horizSlider BGrx3,BGry3,BGrz3;
+horizSlider BGrx4,BGry4,BGrz4;
+
 //button BGActivate1,BGActivate2,BGActivate3,BGActivate4;
 
-label BGLabelLoad, BGLabelName, BGLabelX, BGLabelY, BGLabelZ, BGLabelDel,BGLabelActive,BGLabelSort;
+label BGLabelLoad, BGLabelName, BGLabelX, BGLabelY, BGLabelZ, BGLabelDel,BGLabelActive,BGLabelSort,BGLabelrX,BGLabelrY,BGLabelrZ;
 
 char togglePlayer=0;
 
@@ -1054,6 +1066,66 @@ int rotSpeedVarChange(int v)
   systems[activePS].ps.setRotSpeedVar(v);
   systems[activePS].ps.buildParticles();
   return 0;
+}
+
+int PS1rXChange(int x)
+{
+	return systems[0].ps.rotx = x;
+}
+
+int PS1rYChange(int x)
+{
+	return systems[0].ps.roty = x;
+}
+
+int PS1rZChange(int x)
+{
+	return systems[0].ps.rotz = x;
+}
+
+int PS2rXChange(int x)
+{
+	return systems[1].ps.rotx = x;
+}
+
+int PS2rYChange(int x)
+{
+	return systems[1].ps.roty = x;
+}
+
+int PS2rZChange(int x)
+{
+	return systems[1].ps.rotz = x;
+}
+
+int PS3rXChange(int x)
+{
+	return systems[2].ps.rotx = x;
+}
+
+int PS3rYChange(int x)
+{
+	return systems[2].ps.roty = x;
+}
+
+int PS3rZChange(int x)
+{
+	return systems[2].ps.rotz = x;
+}
+
+int PS4rXChange(int x)
+{
+	return systems[3].ps.rotx = x;
+}
+
+int PS4rYChange(int x)
+{
+	return systems[3].ps.roty = x;
+}
+
+int PS4rZChange(int x)
+{
+	return systems[3].ps.rotz = x;
 }
 
 int PS1XChange(int x)
@@ -2461,6 +2533,7 @@ int openBGPSPannel()
 	// This needs to be delayed
 	//entities.unbindEnt(&butBGPS);
 	hideSidePannelBut = true;
+	butBGPS.renderable = false;
 
 	return 0;
 }
@@ -2472,12 +2545,13 @@ int closeBGPSPannel() // Occurs when mouse is clicked outside of the pannel
 
 	BGPannel.active = false;
 
-	for (int i=0;i<32;i++)
+	for (int i=0;i<128;i++)
 	{
 		if (BGPannel.boundEnts[i] != 0)
 			entities.unbindEnt(BGPannel.boundEnts[i]);
 	}
-	entities.bindEnt(&butBGPS);
+	//entities.bindEnt(&butBGPS);
+	butBGPS.renderable = true;
 
 	return 0;
 }
@@ -5135,26 +5209,52 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 	//BGLoad1.setOnClick(pannelLoad1); BGLoad2.setOnClick(pannelLoad2); BGLoad3.setOnClick(pannelLoad3); BGLoad4.setOnClick(pannelLoad4);
 
-	BGSort1.location.y = BGx1.location.y = BGy1.location.y = BGz1.location.y = 447;
-	BGSort2.location.y = BGx2.location.y = BGy2.location.y = BGz2.location.y = 432;
-	BGSort3.location.y = BGx3.location.y = BGy3.location.y = BGz3.location.y = 417;
-	BGSort4.location.y = BGx4.location.y = BGy4.location.y = BGz4.location.y = 402;
+	BGSort1.location.y = BGx1.location.y = BGy1.location.y = BGz1.location.y = BGrx1.location.y = BGry1.location.y = BGrz1.location.y = 447;
+	BGSort2.location.y = BGx2.location.y = BGy2.location.y = BGz2.location.y = BGrx2.location.y = BGry2.location.y = BGrz2.location.y = 432;
+	BGSort3.location.y = BGx3.location.y = BGy3.location.y = BGz3.location.y = BGrx3.location.y = BGry3.location.y = BGrz3.location.y = 417;
+	BGSort4.location.y = BGx4.location.y = BGy4.location.y = BGz4.location.y = BGrx4.location.y = BGry4.location.y = BGrz4.location.y = 402;
 
 	BGx1.location.x = BGx2.location.x = BGx3.location.x = BGx4.location.x = 378;
-	BGy1.location.x = BGy2.location.x = BGy3.location.x = BGy4.location.x = 468;
-	BGz1.location.x = BGz2.location.x = BGz3.location.x = BGz4.location.x = 555;
+	BGy1.location.x = BGy2.location.x = BGy3.location.x = BGy4.location.x = 422;
+	BGz1.location.x = BGz2.location.x = BGz3.location.x = BGz4.location.x = 466;
+
+	BGrx1.location.x = BGrx2.location.x = BGrx3.location.x = BGrx4.location.x = 510;
+	BGry1.location.x = BGry2.location.x = BGry3.location.x = BGry4.location.x = 554;
+	BGrz1.location.x = BGrz2.location.x = BGrz3.location.x = BGrz4.location.x = 598;
 
 	BGx1.size.x = BGx2.size.x = BGx3.size.x = BGx4.size.x = BGy1.size.x = BGy2.size.x = BGy3.size.x = BGy4.size.x =
-		BGz1.size.x = BGz2.size.x = BGz3.size.x = BGz4.size.x = 75;
+		BGz1.size.x = BGz2.size.x = BGz3.size.x = BGz4.size.x = 40;
+
+	BGrx1.size.x = BGrx2.size.x = BGrx3.size.x = BGrx4.size.x = BGry1.size.x = BGry2.size.x = BGry3.size.x = BGry4.size.x =
+		BGrz1.size.x = BGrz2.size.x = BGrz3.size.x = BGrz4.size.x = 40;
+
+	BGx1.setIntermediatePosition(BGx1.size.x/2);BGy1.setIntermediatePosition(BGy1.size.x/2);BGz1.setIntermediatePosition(BGz1.size.x/2);
+	BGx2.setIntermediatePosition(BGx2.size.x/2);BGy2.setIntermediatePosition(BGy2.size.x/2);BGz2.setIntermediatePosition(BGz2.size.x/2);
+	BGx3.setIntermediatePosition(BGx3.size.x/2);BGy3.setIntermediatePosition(BGy3.size.x/2);BGz3.setIntermediatePosition(BGz3.size.x/2);
+	BGx4.setIntermediatePosition(BGx4.size.x/2);BGy4.setIntermediatePosition(BGy4.size.x/2);BGz4.setIntermediatePosition(BGz4.size.x/2);
+
+	BGrx1.setIntermediatePosition(BGrx1.size.x/2);BGry1.setIntermediatePosition(BGry1.size.x/2);BGrz1.setIntermediatePosition(BGrz1.size.x/2);
+	BGrx2.setIntermediatePosition(BGrx2.size.x/2);BGry2.setIntermediatePosition(BGry2.size.x/2);BGrz2.setIntermediatePosition(BGrz2.size.x/2);
+	BGrx3.setIntermediatePosition(BGrx3.size.x/2);BGry3.setIntermediatePosition(BGry3.size.x/2);BGrz3.setIntermediatePosition(BGrz3.size.x/2);
+	BGrx4.setIntermediatePosition(BGrx4.size.x/2);BGry4.setIntermediatePosition(BGry4.size.x/2);BGrz4.setIntermediatePosition(BGrz4.size.x/2);
 
 	BGx1.setBounds(-512,512,0);BGy1.setBounds(-512,512,0);BGz1.setBounds(-512,512,0);
 	BGx2.setBounds(-512,512,0);BGy2.setBounds(-512,512,0);BGz2.setBounds(-512,512,0);
 	BGx3.setBounds(-512,512,0);BGy3.setBounds(-512,512,0);BGz3.setBounds(-512,512,0);
 	BGx4.setBounds(-512,512,0);BGy4.setBounds(-512,512,0);BGz4.setBounds(-512,512,0);
 
+	BGrx1.setBounds(-180,180,0);BGry1.setBounds(-180,180,0);BGrz1.setBounds(-180,180,0);
+	BGrx2.setBounds(-180,180,0);BGry2.setBounds(-180,180,0);BGrz2.setBounds(-180,180,0);
+	BGrx3.setBounds(-180,180,0);BGry3.setBounds(-180,180,0);BGrz3.setBounds(-180,180,0);
+	BGrx4.setBounds(-180,180,0);BGry4.setBounds(-180,180,0);BGrz4.setBounds(-180,180,0);
+
 	BGx1.setOnChange(PS1XChange);BGx2.setOnChange(PS2XChange);BGx3.setOnChange(PS3XChange);BGx4.setOnChange(PS4XChange);
 	BGy1.setOnChange(PS1YChange);BGy2.setOnChange(PS2YChange);BGy3.setOnChange(PS3YChange);BGy4.setOnChange(PS4YChange);
 	BGz1.setOnChange(PS1ZChange);BGz2.setOnChange(PS2ZChange);BGz3.setOnChange(PS3ZChange);BGz4.setOnChange(PS4ZChange);
+
+	BGrx1.setOnChange(PS1rXChange);BGrx2.setOnChange(PS2rXChange);BGrx3.setOnChange(PS3rXChange);BGrx4.setOnChange(PS4rXChange);
+	BGry1.setOnChange(PS1rYChange);BGry2.setOnChange(PS2rYChange);BGry3.setOnChange(PS3rYChange);BGry4.setOnChange(PS4rYChange);
+	BGrz1.setOnChange(PS1rZChange);BGrz2.setOnChange(PS2rZChange);BGrz3.setOnChange(PS3rZChange);BGrz4.setOnChange(PS4rZChange);
 
 
 	BGPannel.bindEnt(&BGx1);BGPannel.bindEnt(&BGx2);BGPannel.bindEnt(&BGx3);BGPannel.bindEnt(&BGx4);
@@ -5162,8 +5262,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	BGPannel.bindEnt(&BGz1);BGPannel.bindEnt(&BGz2);BGPannel.bindEnt(&BGz3);BGPannel.bindEnt(&BGz4);
 	BGPannel.bindEnt(&BGSort1);BGPannel.bindEnt(&BGSort2);BGPannel.bindEnt(&BGSort3);BGPannel.bindEnt(&BGSort4);
 
+	BGPannel.bindEnt(&BGrx1);BGPannel.bindEnt(&BGrx2);BGPannel.bindEnt(&BGrx3);BGPannel.bindEnt(&BGrx4);
+	BGPannel.bindEnt(&BGry1);BGPannel.bindEnt(&BGry2);BGPannel.bindEnt(&BGry3);BGPannel.bindEnt(&BGry4);
+	BGPannel.bindEnt(&BGrz1);BGPannel.bindEnt(&BGrz2);BGPannel.bindEnt(&BGrz3);BGPannel.bindEnt(&BGrz4);
+
 	BGLabelLoad.location.y = BGLabelName.location.y = BGLabelX.location.y = BGLabelY.location.y = 
-	  BGLabelZ.location.y = BGLabelDel.location.y = BGLabelSort.location.y = 460;
+	  BGLabelZ.location.y = BGLabelDel.location.y = BGLabelSort.location.y = 
+	  BGLabelrX.location.y = BGLabelrY.location.y = BGLabelrZ.location.y = 460;
 
 	BGSort1.location.x = BGSort2.location.x = BGSort3.location.x = BGSort4.location.x = 330;
 	BGSort1.size.x = BGSort2.size.x = BGSort3.size.x = BGSort4.size.x = 30;
@@ -5182,6 +5287,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	BGx3.setValue(0);BGy3.setValue(0);BGz3.setValue(0);
 	BGx4.setValue(0);BGy4.setValue(0);BGz4.setValue(0);
 
+	BGrx1.setValue(0);BGry1.setValue(0);BGrz1.setValue(0);
+	BGrx2.setValue(0);BGry2.setValue(0);BGrz2.setValue(0);
+	BGrx3.setValue(0);BGry3.setValue(0);BGrz3.setValue(0);
+	BGrx4.setValue(0);BGry4.setValue(0);BGrz4.setValue(0);
+
 	BGName1.location.x = BGName2.location.x = BGName3.location.x = BGName4.location.x = 200;
 	BGName1.location.y = 447; BGName2.location.y = 432;BGName4.location.y = 402; BGName3.location.y = 417;
 
@@ -5195,9 +5305,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	BGLabelLoad.setString("Active"); BGLabelLoad.location.x = 120; BGLabelLoad.txtSize = 15; BGPannel.bindEnt(&BGLabelLoad);
 	BGLabelName.setString("Name"); BGLabelName.location.x = 200; BGLabelName.txtSize = 15; BGPannel.bindEnt(&BGLabelName);
 	BGLabelSort.setString("Sort"); BGLabelSort.location.x = 320; BGLabelSort.txtSize = 15; BGPannel.bindEnt(&BGLabelSort);
-	BGLabelX.setString("X"); BGLabelX.location.x = 410; BGLabelX.txtSize = 15; BGPannel.bindEnt(&BGLabelX);
-	BGLabelY.setString("Y"); BGLabelY.location.x = 500; BGLabelY.txtSize = 15; BGPannel.bindEnt(&BGLabelY);
-	BGLabelZ.setString("Z"); BGLabelZ.location.x = 582; BGLabelZ.txtSize = 15; BGPannel.bindEnt(&BGLabelZ);
+	BGLabelX.setString("X"); BGLabelX.location.x = 390; BGLabelX.txtSize = 15; BGPannel.bindEnt(&BGLabelX);
+	BGLabelY.setString("Y"); BGLabelY.location.x = 434; BGLabelY.txtSize = 15; BGPannel.bindEnt(&BGLabelY);
+	BGLabelZ.setString("Z"); BGLabelZ.location.x = 478; BGLabelZ.txtSize = 15; BGPannel.bindEnt(&BGLabelZ);
+	BGLabelrX.setString("\x9DX"); BGLabelrX.location.x = 512; BGLabelrX.txtSize = 15; BGPannel.bindEnt(&BGLabelrX);
+	BGLabelrY.setString("\x9DY"); BGLabelrY.location.x = 556; BGLabelrY.txtSize = 15; BGPannel.bindEnt(&BGLabelrY);
+	BGLabelrZ.setString("\x9DZ"); BGLabelrZ.location.x = 600; BGLabelrZ.txtSize = 15; BGPannel.bindEnt(&BGLabelrZ);
 
   loadDefaultsFromFile();
   
@@ -5434,6 +5547,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 							glPushMatrix();
 							np--;
 							systems[i].ps.getPositionVector(np,px,py,pz);            
+							systems[i].ps.applyRotation(px,py,pz);
 							glTranslatef(px, pz, -py);
 							glRotatef(-viewyrot, 0.0f, 1.0f, 0.0f);  // Pan Arround
 							glRotatef(-viewxrot, 1.0f, 0.0f, 0.0f); // Pan up/down
@@ -5629,11 +5743,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			  }
 			  entities.eventRelay(message,wParam,pos.x,pos.y);
 		  }
-		  if (hideSidePannelBut == true) 
+		  /*if (hideSidePannelBut == true) 
 		  {
 			  entities.unbindEnt(&butBGPS);
-			  entities.active = entities.hoverActive = entities.lastActive = -1;
-		  }
+			  entities.active = entities.hoverActive = entities.lastActive = -1; // NOTE:: I won't be supprised if this line was the problem!
+		  }*/
           return DefWindowProc(hWnd, message, wParam, lParam);
   }
 }

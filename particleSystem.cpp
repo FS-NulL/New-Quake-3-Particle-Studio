@@ -60,6 +60,7 @@ particleSystem::particleSystem()
   fireworkMode = false;
   sort = 0;
   zBase = 0;
+  rotx=roty=rotz=0;
 }
 
 int particleSystem::buildParticles()
@@ -311,6 +312,54 @@ void particleSystem::getPositionVector(int i, float &x, float &y, float &z)
   
 }
 
+void particleSystem::applyRotation(float &x, float &y, float &z)
+{
+	float vSin[3];
+	float vCos[3];
+
+	vSin[0] = vSin[1] = vSin[2] = 0.0f;
+	vCos[0] = vCos[1] = vCos[2] = 0.0f;
+
+	if (rotx)
+	{
+		vSin[0] = sin(rotx/180*PI);
+		vCos[0] = cos(rotx/180*PI);
+	}
+	if (roty)
+	{
+		vSin[1] = sin(roty/180*PI);
+		vCos[1] = cos(roty/180*PI);
+	}
+	if (rotz)
+	{
+		vSin[2] = sin(rotz/180*PI);
+		vCos[2] = cos(rotz/180*PI);
+	}
+
+	if (rotx)
+	{
+	  float y2 = (((y) * vCos[0]) - ((z) * vSin[0]));
+	  float z2 = (((y) * vSin[0]) + ((z) * vCos[0]));
+	  y = y2;
+	  z = z2;
+	}
+	if (roty)
+	{
+	  float z2 = (((z) * vCos[1]) - ((x) * vSin[1]));
+	  float x2 = (((z) * vSin[1]) + ((x) * vCos[1]));
+	  x = x2;
+	  z = z2;
+	}
+	if (rotz)
+	{
+	  float x2 = (((x) * vCos[2]) - ((y) * vSin[2]));
+	  float y2 = (((x) * vSin[2]) + ((y) * vCos[2]));
+	  x = x2;
+	  y = y2;
+	}
+
+}
+
 inline float particleSystem::normalise(float f)
 {
   double temp;
@@ -493,6 +542,17 @@ bool particleSystem::buildShaderFile(char *filename)
       std::strcat(newShaderName,shader);
       std::strcat(newShaderName,"_");
       
+	  float z_xComponent = 0.0f;
+	  float z_yComponent = 0.0f;
+	  float z_zComponent = particles[i].height;
+
+	  float xy_xComponent = particles[i].aXRatio * particles[i].radius;
+	  float xy_yComponent = particles[i].aYRatio * particles[i].radius;
+	  float xy_zComponent = 0.0f;
+
+	  applyRotation(z_xComponent, z_yComponent, z_zComponent);
+	  applyRotation(xy_xComponent,xy_yComponent,xy_zComponent);
+      
       if (i == 0) outFile << shaderBaseName << '\n';
       else outFile << newShaderName << i << '\n';
       outFile << "{\n";
@@ -508,7 +568,7 @@ bool particleSystem::buildShaderFile(char *filename)
       outFile << "\tsurfaceparm nonsolid\n\tsurfaceparm trans\n\tsurfaceparm nomarks\n\tsurfaceparm nodlight\n";
       // Z axis movement (Vertical)
       //Deformvertexes 0 0 p.h wave FUNC 0 1 p ps
-      outFile << "\tdeformvertexes move 0 0 " << particles[i].height << " ";
+      outFile << "\tdeformvertexes move " << z_xComponent << " " << z_yComponent << " " << z_zComponent << " ";
       if (zWaveform == WAVE_SIN) outFile << "sin ";
       else if (zWaveform == WAVE_SQUARE) outFile << "square ";
       else if (zWaveform == WAVE_TRIANGLE) outFile << "triangle ";
@@ -518,7 +578,7 @@ bool particleSystem::buildShaderFile(char *filename)
       
       // XY Plane Movement
       // Deformvertexes X Y 0 wave FUNC 0 1 phase hz
-      outFile << "\tdeformvertexes move " << particles[i].aXRatio * particles[i].radius << ' ' << particles[i].aYRatio * particles[i].radius << " 0 ";
+      outFile << "\tdeformvertexes move " << xy_xComponent << ' ' << xy_yComponent << " " << xy_zComponent<< " ";
       if (xyWaveform == WAVE_SIN) outFile << "sin ";
       else if (xyWaveform == WAVE_SQUARE) outFile << "square ";
       else if (xyWaveform == WAVE_TRIANGLE) outFile << "triangle ";

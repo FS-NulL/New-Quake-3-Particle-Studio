@@ -26,7 +26,6 @@ enum {
   ALPHA_CUSTOM
 };
 
-
 class particleSystem {
 
 
@@ -113,6 +112,7 @@ class particleSystem {
   float calcTimeN();
   time_t resetTime();
   void getPositionVector(int i, float &x, float &y, float &z); // Pass particle number
+  void applyRotation(float &x, float &y, float &z);
   float normalise(float);
   void drawParticle(int i);
   float waveform(int type, float base, float amp, float phase, float freq, float time);
@@ -121,6 +121,7 @@ class particleSystem {
   
   char sort;
   float zBase;
+  float rotx,roty,rotz;
   int numParticles;
   int srcBlend;
   int dstBlend;
