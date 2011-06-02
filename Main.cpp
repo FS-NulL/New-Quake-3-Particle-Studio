@@ -1,7 +1,7 @@
 /*
    Name: PARTICLE STUDIO
    Author: Jonathan '$NulL' Norton
-   Date: May, 2008
+   Date: May, 2008 - June, 2011 (Blimey!)
 */
 
 // Includes
@@ -335,9 +335,6 @@ RECT rc; // Window Size
 
 bool paused;
 bool minimized;
-
-//particleSystem ps;
-//bgParticlesStruct bgParticles[4];
 
 tab *currentTab = 0;
 
@@ -1433,7 +1430,7 @@ int Active4Pressed()
 }
 
 /*
-----------------=====================================END OF CHANGE CODE=============================--------------
+----------------=====================================END OF ON-CHANGE CODE=============================--------------
 */
 
 int getTexture()
@@ -2509,6 +2506,20 @@ bool saveStateToFile(char *filename,std::ofstream &oFile)
 	oFile.write( (const char*) &sliderZBase.value, sizeof(int));
     //oFile.close();
     
+	horizSlider* rotx[MAX_SYSTEMS];
+	horizSlider* roty[MAX_SYSTEMS];
+	horizSlider* rotz[MAX_SYSTEMS];
+	rotx[0] = &BGrx1;	rotx[1] = &BGrx2;	rotx[2] = &BGrx3;
+	rotx[3] = &BGrx4;	roty[0] = &BGry1;	roty[1] = &BGry2;
+	roty[2] = &BGry3;	roty[3] = &BGry4;	rotz[0] = &BGrz1;
+	rotz[1] = &BGrz2;	rotz[2] = &BGrz3;	rotz[3] = &BGrz4;
+
+	oFile.write( (const char*) &(rotx[activePS]->value), sizeof(int));
+	oFile.write( (const char*) &(roty[activePS]->value), sizeof(int));
+	oFile.write( (const char*) &(rotz[activePS]->value), sizeof(int));
+
+
+
     return true;
     
   }
@@ -3227,6 +3238,29 @@ bool loadStateFromFile(char *filename, particleSystem &ps,std::ifstream &iFile)
 		if (iFile.eof() ) status = false;
 	}
     
+	if (status)
+	{
+		iFile.read( (char*) &value, sizeof(value));
+		systems[activePS].ps.rotx = ((float)value);
+		if (iFile.eof() ) status = false;
+	}
+	if (status)
+	{
+		iFile.read( (char*) &value, sizeof(value));
+		systems[activePS].ps.roty = ((float)value);
+		if (iFile.eof() ) status = false;
+	}
+	if (status)
+	{
+		iFile.read( (char*) &value, sizeof(value));
+		systems[activePS].ps.rotz = ((float)value);
+		if (iFile.eof() ) status = false;
+	}
+
+	/*oFile.write( (const char*) &(rotx[activePS]->value), sizeof(int));
+	oFile.write( (const char*) &(roty[activePS]->value), sizeof(int));
+	oFile.write( (const char*) &(rotz[activePS]->value), sizeof(int));*/
+    
     systems[activePS].ps.buildParticles();
     return status;
   }
@@ -3686,6 +3720,9 @@ void updateSystemsTabUI()
 	BGx1.setValue_nochange(systems[0].x);
 	BGy1.setValue_nochange(systems[0].y);
 	BGz1.setValue_nochange(systems[0].z);
+	BGrx1.setValue_nochange(systems[0].ps.rotx);
+	BGry1.setValue_nochange(systems[0].ps.roty);
+	BGrz1.setValue_nochange(systems[0].ps.rotz);
 	if (systems[0].active) 
 	{
 		BGLoad1.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);//Light Blue
@@ -3704,6 +3741,9 @@ void updateSystemsTabUI()
 	BGx2.setValue_nochange(systems[1].x);
 	BGy2.setValue_nochange(systems[1].y);
 	BGz2.setValue_nochange(systems[1].z);
+	BGrx2.setValue_nochange(systems[1].ps.rotx);
+	BGry2.setValue_nochange(systems[2].ps.roty);
+	BGrz2.setValue_nochange(systems[1].ps.rotz);
 	if (systems[1].active) 
 	{
 		BGLoad2.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);//Light Blue
@@ -3722,6 +3762,9 @@ void updateSystemsTabUI()
 	BGx3.setValue_nochange(systems[2].x);
 	BGy3.setValue_nochange(systems[2].y);
 	BGz3.setValue_nochange(systems[2].z);
+	BGrx3.setValue_nochange(systems[2].ps.rotx);
+	BGry3.setValue_nochange(systems[2].ps.roty);
+	BGrz3.setValue_nochange(systems[2].ps.rotz);
 	if (systems[2].active) 
 	{
 		BGLoad3.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);//Light Blue
@@ -3740,6 +3783,9 @@ void updateSystemsTabUI()
 	BGx4.setValue_nochange(systems[3].x);
 	BGy4.setValue_nochange(systems[3].y);
 	BGz4.setValue_nochange(systems[3].z);
+	BGrx4.setValue_nochange(systems[3].ps.rotx);
+	BGry4.setValue_nochange(systems[3].ps.roty);
+	BGrz4.setValue_nochange(systems[3].ps.rotz);
 	if (systems[3].active) 
 	{
 		BGLoad4.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);//Light Blue
@@ -3769,7 +3815,7 @@ int loadSettings()
 {
   OPENFILENAME ofn;
   char szFileName[MAX_PATH];
-  char path[MAX_PATH];
+  //char path[MAX_PATH];
   bool status;
 
   ZeroMemory(&ofn, sizeof(ofn));
@@ -3792,6 +3838,7 @@ int loadSettings()
     if (!status) MessageBox(NULL, "End of file reached before loading completed, some settings may be incorrect", "Loading...", MB_OK);
 	if (iFile.is_open()) iFile.close();
     //else MessageBox(NULL, "Error During Save", "Saving...", MB_OK);
+	updateSystemsTabUI();
   }  
   return 0;
 }
@@ -3800,7 +3847,7 @@ int loadAllSettings()
 {
   OPENFILENAME ofn;
   char szFileName[MAX_PATH];
-  char path[MAX_PATH];
+  //char path[MAX_PATH];
   bool status;
 
   ZeroMemory(&ofn, sizeof(ofn));
@@ -5238,10 +5285,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	BGrx3.setIntermediatePosition(BGrx3.size.x/2);BGry3.setIntermediatePosition(BGry3.size.x/2);BGrz3.setIntermediatePosition(BGrz3.size.x/2);
 	BGrx4.setIntermediatePosition(BGrx4.size.x/2);BGry4.setIntermediatePosition(BGry4.size.x/2);BGrz4.setIntermediatePosition(BGrz4.size.x/2);
 
-	BGx1.setBounds(-512,512,0);BGy1.setBounds(-512,512,0);BGz1.setBounds(-512,512,0);
-	BGx2.setBounds(-512,512,0);BGy2.setBounds(-512,512,0);BGz2.setBounds(-512,512,0);
-	BGx3.setBounds(-512,512,0);BGy3.setBounds(-512,512,0);BGz3.setBounds(-512,512,0);
-	BGx4.setBounds(-512,512,0);BGy4.setBounds(-512,512,0);BGz4.setBounds(-512,512,0);
+	BGx1.setBounds(-256,256,0);BGy1.setBounds(-256,256,0);BGz1.setBounds(-256,256,0);
+	BGx2.setBounds(-256,256,0);BGy2.setBounds(-256,256,0);BGz2.setBounds(-256,256,0);
+	BGx3.setBounds(-256,256,0);BGy3.setBounds(-256,256,0);BGz3.setBounds(-256,256,0);
+	BGx4.setBounds(-256,256,0);BGy4.setBounds(-256,256,0);BGz4.setBounds(-256,256,0);
 
 	BGrx1.setBounds(-180,180,0);BGry1.setBounds(-180,180,0);BGrz1.setBounds(-180,180,0);
 	BGrx2.setBounds(-180,180,0);BGry2.setBounds(-180,180,0);BGrz2.setBounds(-180,180,0);
@@ -5308,9 +5355,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	BGLabelX.setString("X"); BGLabelX.location.x = 390; BGLabelX.txtSize = 15; BGPannel.bindEnt(&BGLabelX);
 	BGLabelY.setString("Y"); BGLabelY.location.x = 434; BGLabelY.txtSize = 15; BGPannel.bindEnt(&BGLabelY);
 	BGLabelZ.setString("Z"); BGLabelZ.location.x = 478; BGLabelZ.txtSize = 15; BGPannel.bindEnt(&BGLabelZ);
-	BGLabelrX.setString("\x9DX"); BGLabelrX.location.x = 512; BGLabelrX.txtSize = 15; BGPannel.bindEnt(&BGLabelrX);
-	BGLabelrY.setString("\x9DY"); BGLabelrY.location.x = 556; BGLabelrY.txtSize = 15; BGPannel.bindEnt(&BGLabelrY);
-	BGLabelrZ.setString("\x9DZ"); BGLabelrZ.location.x = 600; BGLabelrZ.txtSize = 15; BGPannel.bindEnt(&BGLabelrZ);
+	BGLabelrX.setString("\x9DX"); BGLabelrX.location.x = 515; BGLabelrX.txtSize = 15; BGPannel.bindEnt(&BGLabelrX);
+	BGLabelrY.setString("\x9DY"); BGLabelrY.location.x = 560; BGLabelrY.txtSize = 15; BGPannel.bindEnt(&BGLabelrY);
+	BGLabelrZ.setString("\x9DZ"); BGLabelrZ.location.x = 605; BGLabelrZ.txtSize = 15; BGPannel.bindEnt(&BGLabelrZ);
 
   loadDefaultsFromFile();
   
@@ -5320,7 +5367,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
   RGBf pannelColor;
   
   int lastTime = clock();
-  int nowTime;
+  //int nowTime;
   
            glViewport (0, 0, rc.right-1, rc.bottom-1);
          glMatrixMode (GL_PROJECTION);						// Select The Projection Matrix
@@ -5675,7 +5722,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       mouse.y = my;
       scr2w(); 
     }
-    LRESULT res;
+    //LRESULT res;
 
 	if (!BGPannel.inBounds(pos.x,pos.y) && (message == WM_LBUTTONDOWN) && (BGPannel.active) && (entry.active==false)) 
 	{
