@@ -4,6 +4,8 @@
 #include "baseEnt.h"
 #include "label.h"
 
+#include <functional>
+
 enum {
   BUTTON_COLOR,
   BUTTON_COLOR_ACTIVE,
@@ -17,10 +19,11 @@ class button : public baseEnt
   RGBf bgColor;
   RGBf bgColor_active;
   RGBf bgColor_hoverActive;
-  int (*onClick)(void);
+  //void (*onClick)(void);
+  std::function<void()> onClick;
  public:
   int eventHandler(UINT message,WPARAM key,int mousex,int mousey);
-  int setOnClick(int (*p)(void));
+  int setOnClick(std::function<void()> p);
   void setColor(float red,float green, float blue, int style=BUTTON_COLOR);
    button();
   ~button();

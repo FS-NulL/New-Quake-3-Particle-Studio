@@ -24,7 +24,7 @@ class listBox : public baseEnt
   RGBf bgColor;
   RGBf bgColor_active;
   RGBf bgColor_hoverActive;
-  int (*onChange)(int);
+  void (*onChange)(int);
   listItem *items;
   int changeOccured();
   int listOffset;
@@ -36,7 +36,7 @@ class listBox : public baseEnt
   int eventHandler(UINT message,WPARAM key,int mousex,int mousey);
   int draw();
   int forceUnActive();
-  int setOnChange(int (*p)(int));
+  int setOnChange(void (*p)(int));
   label l_name;
   bool useLabelName;
   int createItems(unsigned int ni);

@@ -1,9 +1,7 @@
 #include <windows.h>
 #include <GL/gl.h>
 
-
 #include "button.h"
-
 
 button::button()
 {
@@ -47,16 +45,16 @@ int button::draw()
 {
   if (!renderable) return -1;
   glBegin(GL_QUADS);
-        //BackGround
-        glColor3f( 
-        active ? bgColor_active.R : hoverActive ? bgColor_hoverActive.R :  bgColor.R, 
-        active ? bgColor_active.G : hoverActive ? bgColor_hoverActive.G :  bgColor.G, 
-        active ? bgColor_active.B : hoverActive ? bgColor_hoverActive.B :  bgColor.B );
-        
-        glVertex2f(location.x,location.y);
-        glVertex2f(location.x + size.x,location.y);
-        glVertex2f(location.x + size.x,location.y + size.y);
-        glVertex2f(location.x,location.y + size.y);
+		//BackGround
+		glColor3f( 
+		active ? bgColor_active.R : hoverActive ? bgColor_hoverActive.R :  bgColor.R, 
+		active ? bgColor_active.G : hoverActive ? bgColor_hoverActive.G :  bgColor.G, 
+		active ? bgColor_active.B : hoverActive ? bgColor_hoverActive.B :  bgColor.B );
+		
+		glVertex2f((GLfloat)location.x,			(GLfloat)location.y);
+		glVertex2f((GLfloat)location.x + size.x,(GLfloat)location.y);
+		glVertex2f((GLfloat)location.x + size.x,(GLfloat)location.y + size.y);
+		glVertex2f((GLfloat)location.x,			(GLfloat)location.y + size.y);
   glEnd();
   
   if (useLabelName) l_name.draw();
@@ -70,7 +68,7 @@ int button::forceUnActive()
   return 0;
 }
 
-int button::setOnClick(int (*p)(void))
+int button::setOnClick(std::function<void()> p)
 {
   onClick = p;
   return 0;
@@ -78,37 +76,39 @@ int button::setOnClick(int (*p)(void))
 
 int button::eventHandler(UINT message,WPARAM key,int mousex,int mousey)
 {
-    if (message == WM_LBUTTONDOWN)
-    {
-        active = true;
-        hoverActive = false;
-    }
-    if (message == WM_MOUSEMOVE)
-    {
-        if (active) 
-        {
-          // Move slider position to mouse x if can! calc value
-        }
-        else  // Hovering? How do we detect left hover?
-        {
-          if (inBounds(mousex,mousey)) hoverActive = true;
-          else hoverActive = false; 
-        }
-    }
-    if (message == WM_LBUTTONUP)   // Unset Active
-    {
-        active = false;
-        if (inBounds(mousex,mousey)) 
-        {
-          hoverActive = true;
-          // Run external code here?  
-          if (onClick) onClick();
-        }
-        
-        
-        
-        //bgColor.B = 0.5f;
-    }
+	(void) key;
+
+	if (message == WM_LBUTTONDOWN)
+	{
+		active = true;
+		hoverActive = false;
+	}
+	if (message == WM_MOUSEMOVE)
+	{
+		if (active) 
+		{
+		  // Move slider position to mouse x if can! calc value
+		}
+		else  // Hovering? How do we detect left hover?
+		{
+		  if (inBounds(mousex,mousey)) hoverActive = true;
+		  else hoverActive = false; 
+		}
+	}
+	if (message == WM_LBUTTONUP)   // Unset Active
+	{
+		active = false;
+		if (inBounds(mousex,mousey)) 
+		{
+		  hoverActive = true;
+		  // Run external code here?  
+		  if (onClick) onClick();
+		}
+		
+		
+		
+		//bgColor.B = 0.5f;
+	}
 	return 0;
 }
 
@@ -118,22 +118,22 @@ void button::setColor(float red,float green, float blue, int style)
 
   switch (style)
   {
-    case BUTTON_COLOR:
-      bgColor.R = red;
-      bgColor.G = green;
-      bgColor.B = blue;
-      return;
-      
-    case BUTTON_COLOR_ACTIVE:
-      bgColor_active.R = red;
-      bgColor_active.G = green;
-      bgColor_active.B = blue;
-      return;
-      
-    case BUTTON_COLOR_HOVERACTIVE:
-      bgColor_hoverActive.R = red;
-      bgColor_hoverActive.G = green;
-      bgColor_hoverActive.B = blue;
-      return;
+	case BUTTON_COLOR:
+	  bgColor.R = red;
+	  bgColor.G = green;
+	  bgColor.B = blue;
+	  return;
+	  
+	case BUTTON_COLOR_ACTIVE:
+	  bgColor_active.R = red;
+	  bgColor_active.G = green;
+	  bgColor_active.B = blue;
+	  return;
+	  
+	case BUTTON_COLOR_HOVERACTIVE:
+	  bgColor_hoverActive.R = red;
+	  bgColor_hoverActive.G = green;
+	  bgColor_hoverActive.B = blue;
+	  return;
   }
 }

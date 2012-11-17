@@ -6,23 +6,24 @@
 
 class sidePannel : public baseEnt
 {
-  bool hoverActive;
-  RGBf bgColor;
-  int (*onClick)(void);
+	bool hoverActive;
+	RGBf bgColor;
+	int (*onClick)(void);  
  public:
-  bool active;
-  bool visible;
-  int eventHandler(UINT message,WPARAM key,int mousex,int mousey);
-  int setOnClick(int (*p)(void));
-  void setColor(float red,float green, float blue);
-   sidePannel();
-  ~sidePannel();
-  int draw();
-  int forceUnActive();
-  int bindEnt(baseEnt *p);
-  bool useLabelName;
-  label l_name;
-    baseEnt *boundEnts[128];
+	static const int MaxEnts = 512;
+	bool active;
+	bool visible;
+	int eventHandler(UINT message,WPARAM key,int mousex,int mousey);
+	int setOnClick(int (*p)(void));
+	void setColor(float red,float green, float blue);
+	sidePannel();
+	~sidePannel();
+	int draw();
+	int forceUnActive();
+	int bindEnt(baseEnt *p);
+	bool useLabelName;
+	label l_name;
+	baseEnt *boundEnts[MaxEnts];
 };
 
 #endif

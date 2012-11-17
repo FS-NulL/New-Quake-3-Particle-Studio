@@ -10,7 +10,7 @@
 
 bool ue_txtBoxChanged(char *s)
 {
-  char * p=s;
+  //char * p=s;
   //std::ofstream oFile("entry_txtchange.txt",std::ios::app);
   //oFile << s << ' ';
   //only allows numbers and '.' and '-'
@@ -30,7 +30,7 @@ bool ue_txtBoxChanged(char *s)
 userEntry::userEntry()
 {
   active = false;
-  onChange = 0;
+  onChange = nullptr;
   isFloat = false;
   ptr = 0;
   
@@ -39,7 +39,7 @@ userEntry::userEntry()
   entryBox.size.x = 240;
   entryBox.size.y = 25;
   entryBox.l_name.alignment = ALIGN_RIGHT;
-  entryBox.l_name.txtSize = entryBox.size.y;
+  entryBox.l_name.txtSize = (float) entryBox.size.y;
   entryBox.l_name.setString("Value: ");
   entryBox.useLabelName = true;
   entryBox.l_name.location.x = entryBox.location.x;
@@ -65,7 +65,7 @@ void userEntry::setActive()
 {
   active = true;
   animState = 1;
-  onChange = 0;
+  onChange = nullptr;
 }
 
 void userEntry::draw()
@@ -94,10 +94,10 @@ void userEntry::draw()
   
   glColor4f(0.4f,0.4f,0.4f,0.75f);
   glBegin(GL_QUADS);
-    glVertex2f(nTL.x,nTL.y);
-    glVertex2f(nTL.x,nBR.y);
-    glVertex2f(nBR.x,nBR.y);
-    glVertex2f(nBR.x,nTL.y);
+    glVertex2f((GLfloat)nTL.x,(GLfloat)nTL.y);
+    glVertex2f((GLfloat)nTL.x,(GLfloat)nBR.y);
+    glVertex2f((GLfloat)nBR.x,(GLfloat)nBR.y);
+    glVertex2f((GLfloat)nBR.x,(GLfloat)nTL.y);
   glEnd();
   
   if (abs(animState) == 10)

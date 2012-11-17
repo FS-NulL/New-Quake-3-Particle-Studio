@@ -11,6 +11,10 @@
 
 #define PI 3.14159265
 
+int particleSystem::fixedSeed = 5834758;
+bool particleSystem::useFixedSeed = false;
+bool particleSystem::once = false;
+time_t particleSystem::lastResetTime = 0;
 
 particleSystem::particle::particle()
 {
@@ -65,210 +69,210 @@ particleSystem::particleSystem()
 
 int particleSystem::buildParticles()
 {
-  srand(time(NULL));
+  srand( useFixedSeed ? fixedSeed : time(NULL) );
   int i= numParticles;
   particles[i].active = false;
   while (i)
   {
-    i--;
-    particles[i].active=true;
-    
-    // Phase
-    particles[i].phase = pow( (float) i / (float)numParticles ,phaseGrouping)  + masterPhase;
-    
-    // Angle
-    if ((endAngle - startAngle) == 0) particles[i].angle = (float)startAngle;
-    else 
-    {
-      float x = ((float)(rand() % 1000) )/ 1000;
-      float WF = angleGrouping*(0.5*pow( 2*(x-0.5) ,3 ) + 0.5 ) + (1-angleGrouping) * x;
-      particles[i].angle = (WF * abs(endAngle - startAngle)) + startAngle;
-    }
-    particles[i].aXRatio = cos((float)particles[i].angle * PI/180);
-    particles[i].aYRatio = sin((float)particles[i].angle * PI/180);   
-    
-    // Height
-    
-    if (heightVar > 0) particles[i].height = height - heightVar + (rand() % ((int)(2*heightVar)));
-    else particles[i].height = height;
-    
-    /*int hv = (int)((float)height * heightVar);
-    if (hv==0) particles[i].height = height;
-    else
-    {
-      hv = rand() % hv;
-      particles[i].height = height + hv - (0.5 * ((float)height*heightVar));
-    }*/
-    
-    particles[i].emitterXYBase = particles[i].emitterZBase = 0.0f;
-    
-    particles[i].ampz = 1.0f;
-    if (emitterZvar<=0) particles[i].emitterZBase = 0;
-    else
-    {
-      if (particles[i].height>0) particles[i].emitterZBase = ( (float)(rand() % ((int)(2*emitterZvar))) - emitterZvar) / particles[i].height;
-      else
-      {
-        particles[i].ampz = 0.0f;
-        particles[i].height = ( (float)(rand() % ((int)(2*emitterZvar))) - emitterZvar);
-        particles[i].emitterZBase = 1.0f;
-      }
-    }
-    
-    // Frequency
-    particles[i].hz = hz;
-    
-    // Radius
-    
-    if (height ==0) particles[i].radius = radius;
-    else particles[i].radius = radius * (particles[i].height / height);
-    if (radiusVar > 0) particles[i].radius = particles[i].radius - radiusVar + (rand() % ((int) (2*radiusVar)));
-    
-    if (fireworkMode)
-    {
-      // radius is a function of height
-      // then add radius Var
-      //std::ofstream oFile("firew.txt",std::ios::app);
-      particles[i].radius = radius;
-      float temp = cos( asin( (particles[i].height)/(height+heightVar) ) );
-      particles[i].radius *= temp;
-      if (radiusVar > 0) particles[i].radius = particles[i].radius - radiusVar + (rand() % ((int) (2*radiusVar)));
-      //oFile.close();
-    }
-    
-    /*int rv = (int)((float)radius * radiusVar);
-    if (rv>0) 
-    {
-      rv = rand() % rv;
-      particles[i].radius = particles[i].radius + rv - (0.5* ((float)radius*radiusVar));
-    }*/
-    //particles[i].emitterXYBase = 0.0f;
-    
-    
-    // XY Emitter Var
-    particles[i].ampxy = 1.0f;
-    if (emitterXYVar<=0) particles[i].emitterXYBase = 0;
-    else
-    {
-      if (particles[i].radius>0) particles[i].emitterXYBase = ( (float)(rand() % ((int)(2*emitterXYVar))) - emitterXYVar) / particles[i].radius;
-      else
-      {
-        particles[i].ampxy = 0.0f;
-        particles[i].emitterXYBase = 1.0f;
-        particles[i].radius = ( (float)(rand() % ((int)(2*emitterXYVar))) - emitterXYVar);
-      }
-    }
-    
-    //std::ofstream oFile("emitterxy.txt",std::ios::app);
-    //oFile << i << ' ' << particles[i].radius << ' ' << particles[i].emitterXYBase << ' ' << particles[i].ampxy << ' ' << emitterXYVar << '\n';
-    //oFile.close();
-    
-    //Scale / stretch
-    
-    particles[i].scale_amp  = 0;
-    particles[i].scale_base = 1;
+	i--;
+	particles[i].active=true;
+	
+	// Phase
+	particles[i].phase = pow( (float) i / (float)numParticles ,phaseGrouping)  + masterPhase;
+	
+	// Angle
+	if ((endAngle - startAngle) == 0) particles[i].angle = (float)startAngle;
+	else 
+	{
+	  float x = ((float)(rand() % 1000) )/ 1000;
+	  float WF = angleGrouping*(0.5*pow( 2*(x-0.5) ,3 ) + 0.5 ) + (1-angleGrouping) * x;
+	  particles[i].angle = (WF * abs(endAngle - startAngle)) + startAngle;
+	}
+	particles[i].aXRatio = cos((float)particles[i].angle * PI/180);
+	particles[i].aYRatio = sin((float)particles[i].angle * PI/180);   
+	
+	// Height
+	
+	if (heightVar > 0) particles[i].height = height - heightVar + (rand() % ((int)(2*heightVar)));
+	else particles[i].height = height;
+	
+	/*int hv = (int)((float)height * heightVar);
+	if (hv==0) particles[i].height = height;
+	else
+	{
+	  hv = rand() % hv;
+	  particles[i].height = height + hv - (0.5 * ((float)height*heightVar));
+	}*/
+	
+	particles[i].emitterXYBase = particles[i].emitterZBase = 0.0f;
+	
+	particles[i].ampz = 1.0f;
+	if (emitterZvar<=0) particles[i].emitterZBase = 0;
+	else
+	{
+	  if (particles[i].height>0) particles[i].emitterZBase = ( (float)(rand() % ((int)(2*emitterZvar))) - emitterZvar) / particles[i].height;
+	  else
+	  {
+		particles[i].ampz = 0.0f;
+		particles[i].height = ( (float)(rand() % ((int)(2*emitterZvar))) - emitterZvar);
+		particles[i].emitterZBase = 1.0f;
+	  }
+	}
+	
+	// Frequency
+	particles[i].hz = hz;
+	
+	// Radius
+	
+	if (height ==0) particles[i].radius = radius;
+	else particles[i].radius = radius * (particles[i].height / height);
+	if (radiusVar > 0) particles[i].radius = particles[i].radius - radiusVar + (rand() % ((int) (2*radiusVar)));
+	
+	if (fireworkMode)
+	{
+	  // radius is a function of height
+	  // then add radius Var
+	  //std::ofstream oFile("firew.txt",std::ios::app);
+	  particles[i].radius = radius;
+	  float temp = cos( asin( (particles[i].height)/(height+heightVar) ) );
+	  particles[i].radius *= temp;
+	  if (radiusVar > 0) particles[i].radius = particles[i].radius - radiusVar + (rand() % ((int) (2*radiusVar)));
+	  //oFile.close();
+	}
+	
+	/*int rv = (int)((float)radius * radiusVar);
+	if (rv>0) 
+	{
+	  rv = rand() % rv;
+	  particles[i].radius = particles[i].radius + rv - (0.5* ((float)radius*radiusVar));
+	}*/
+	//particles[i].emitterXYBase = 0.0f;
+	
+	
+	// XY Emitter Var
+	particles[i].ampxy = 1.0f;
+	if (emitterXYVar<=0) particles[i].emitterXYBase = 0;
+	else
+	{
+	  if (particles[i].radius>0) particles[i].emitterXYBase = ( (float)(rand() % ((int)(2*emitterXYVar))) - emitterXYVar) / particles[i].radius;
+	  else
+	  {
+		particles[i].ampxy = 0.0f;
+		particles[i].emitterXYBase = 1.0f;
+		particles[i].radius = ( (float)(rand() % ((int)(2*emitterXYVar))) - emitterXYVar);
+	  }
+	}
+	
+	//std::ofstream oFile("emitterxy.txt",std::ios::app);
+	//oFile << i << ' ' << particles[i].radius << ' ' << particles[i].emitterXYBase << ' ' << particles[i].ampxy << ' ' << emitterXYVar << '\n';
+	//oFile.close();
+	
+	//Scale / stretch
+	
+	particles[i].scale_amp  = 0;
+	particles[i].scale_base = 1;
   
-    if (scale_waveform == WAVE_SIN)
-    {
-      particles[i].scale_base = startStretch;
-      particles[i].scale_amp = endStretch;
-    }
-    if (scale_waveform == WAVE_SQUARE)
-    {
-      particles[i].scale_base = (startStretch+endStretch)/2;
-      particles[i].scale_amp = (startStretch - endStretch) / 2;
-    }
-    if (scale_waveform == WAVE_TRIANGLE)
-    {
-      particles[i].scale_base = startStretch;
-      particles[i].scale_amp = endStretch;
-    }
-    if (scale_waveform == WAVE_SAWTOOTH)
-    {
-      particles[i].scale_base = startStretch;
-      particles[i].scale_amp = endStretch - startStretch;
-    }
-    if (scale_waveform == WAVE_INVSAWTOOTH)
-    {
-      particles[i].scale_base = endStretch;
-      particles[i].scale_amp = startStretch - endStretch;
-    }
-    if (scale_waveform == WAVE_CONST)
-    {
-      particles[i].scale_base = startStretch;
-    }
-    
-    // Rotation
-    
-    if (rotSpeedVar == 0) particles[i].rotSpeed = (float) rotSpeed;
-    else 
-    {
-      particles[i].rotSpeed = (float) (rotSpeed - rotSpeedVar + ( rand() % (2*rotSpeedVar) ));
-    }
-    
-    // RGBGEN
-    if (rgbgen_waveform == WAVE_SIN)
-    {
-      particles[i].rgbgen_base = startRGB;
-      particles[i].rgbgen_amp = endRGB;
-    }
-    if (rgbgen_waveform == WAVE_SQUARE)
-    {
-      particles[i].rgbgen_base = (startRGB+endRGB)/2;
-      particles[i].rgbgen_amp = (startRGB - endRGB) / 2;
-    }
-    if (rgbgen_waveform == WAVE_TRIANGLE)
-    {
-      particles[i].rgbgen_base = startRGB;
-      particles[i].rgbgen_amp = endRGB;
-    }
-    if (rgbgen_waveform == WAVE_SAWTOOTH)
-    {
-      particles[i].rgbgen_base = startRGB;
-      particles[i].rgbgen_amp = endRGB - startRGB;
-    }
-    if (rgbgen_waveform == WAVE_INVSAWTOOTH)
-    {
-      particles[i].rgbgen_base = endRGB;
-      particles[i].rgbgen_amp = startRGB - endRGB;
-    }
-    if (rgbgen_waveform == WAVE_CONST)
-    {
-      particles[i].rgbgen_base = startRGB;
-    }
-    
-    // ALPHAGEN
-    
-    if (alphagen_waveform == WAVE_SIN)
-    {
-      particles[i].alphagen_base = startAlpha;
-      particles[i].alphagen_amp = endAlpha;
-    }
-    if (alphagen_waveform == WAVE_SQUARE)
-    {
-      particles[i].alphagen_base = (startAlpha+endAlpha)/2;
-      particles[i].alphagen_amp =  (startAlpha-endAlpha)/2;
-    }
-    if (alphagen_waveform == WAVE_TRIANGLE)
-    {
-      particles[i].alphagen_base = startAlpha;
-      particles[i].alphagen_amp =  endAlpha;
-    }
-    if (alphagen_waveform == WAVE_SAWTOOTH)
-    {
-      particles[i].alphagen_base = startAlpha;
-      particles[i].alphagen_amp = endAlpha - startAlpha;
-    }
-    if (alphagen_waveform == WAVE_INVSAWTOOTH)
-    {
-      particles[i].alphagen_base = endAlpha;
-      particles[i].alphagen_amp = startAlpha - endAlpha;
-    }
-    if (alphagen_waveform == WAVE_CONST)
-    {
-      particles[i].alphagen_base = startAlpha;
-      particles[i].alphagen_amp = 0;
-    }
+	if (scale_waveform == WAVE_SIN)
+	{
+	  particles[i].scale_base = startStretch;
+	  particles[i].scale_amp = endStretch;
+	}
+	if (scale_waveform == WAVE_SQUARE)
+	{
+	  particles[i].scale_base = (startStretch+endStretch)/2;
+	  particles[i].scale_amp = (startStretch - endStretch) / 2;
+	}
+	if (scale_waveform == WAVE_TRIANGLE)
+	{
+	  particles[i].scale_base = startStretch;
+	  particles[i].scale_amp = endStretch;
+	}
+	if (scale_waveform == WAVE_SAWTOOTH)
+	{
+	  particles[i].scale_base = startStretch;
+	  particles[i].scale_amp = endStretch - startStretch;
+	}
+	if (scale_waveform == WAVE_INVSAWTOOTH)
+	{
+	  particles[i].scale_base = endStretch;
+	  particles[i].scale_amp = startStretch - endStretch;
+	}
+	if (scale_waveform == WAVE_CONST)
+	{
+	  particles[i].scale_base = startStretch;
+	}
+	
+	// Rotation
+	
+	if (rotSpeedVar == 0) particles[i].rotSpeed = (float) rotSpeed;
+	else 
+	{
+	  particles[i].rotSpeed = (float) (rotSpeed - rotSpeedVar + ( rand() % (2*rotSpeedVar) ));
+	}
+	
+	// RGBGEN
+	if (rgbgen_waveform == WAVE_SIN)
+	{
+	  particles[i].rgbgen_base = startRGB;
+	  particles[i].rgbgen_amp = endRGB;
+	}
+	if (rgbgen_waveform == WAVE_SQUARE)
+	{
+	  particles[i].rgbgen_base = (startRGB+endRGB)/2;
+	  particles[i].rgbgen_amp = (startRGB - endRGB) / 2;
+	}
+	if (rgbgen_waveform == WAVE_TRIANGLE)
+	{
+	  particles[i].rgbgen_base = startRGB;
+	  particles[i].rgbgen_amp = endRGB;
+	}
+	if (rgbgen_waveform == WAVE_SAWTOOTH)
+	{
+	  particles[i].rgbgen_base = startRGB;
+	  particles[i].rgbgen_amp = endRGB - startRGB;
+	}
+	if (rgbgen_waveform == WAVE_INVSAWTOOTH)
+	{
+	  particles[i].rgbgen_base = endRGB;
+	  particles[i].rgbgen_amp = startRGB - endRGB;
+	}
+	if (rgbgen_waveform == WAVE_CONST)
+	{
+	  particles[i].rgbgen_base = startRGB;
+	}
+	
+	// ALPHAGEN
+	
+	if (alphagen_waveform == WAVE_SIN)
+	{
+	  particles[i].alphagen_base = startAlpha;
+	  particles[i].alphagen_amp = endAlpha;
+	}
+	if (alphagen_waveform == WAVE_SQUARE)
+	{
+	  particles[i].alphagen_base = (startAlpha+endAlpha)/2;
+	  particles[i].alphagen_amp =  (startAlpha-endAlpha)/2;
+	}
+	if (alphagen_waveform == WAVE_TRIANGLE)
+	{
+	  particles[i].alphagen_base = startAlpha;
+	  particles[i].alphagen_amp =  endAlpha;
+	}
+	if (alphagen_waveform == WAVE_SAWTOOTH)
+	{
+	  particles[i].alphagen_base = startAlpha;
+	  particles[i].alphagen_amp = endAlpha - startAlpha;
+	}
+	if (alphagen_waveform == WAVE_INVSAWTOOTH)
+	{
+	  particles[i].alphagen_base = endAlpha;
+	  particles[i].alphagen_amp = startAlpha - endAlpha;
+	}
+	if (alphagen_waveform == WAVE_CONST)
+	{
+	  particles[i].alphagen_base = startAlpha;
+	  particles[i].alphagen_amp = 0;
+	}
   }
   return 0;
 }
@@ -423,28 +427,28 @@ void particleSystem::drawParticle(int i)
   if (stretch <= 1) glScalef(stretch,stretch,0);
   else
   {
-    // bring in texture coords
+	// bring in texture coords
   }
 
   glBegin(GL_QUADS);
-    // use glColor4f(f,f,f,f) for rgb + alpha
-    glColor4f( rgb, rgb, rgb ,vAlpha);
-            
-    if (stretch > 1.0f)
-    {
-      stretch = 0.5 - ((float) 1) / (2*stretch);
-      glTexCoord2f(0.0+ stretch, 0.0+stretch); glVertex3f( -(size/2), -(size/2),0.0f); 
-      glTexCoord2f(1.0-stretch, 0.0+stretch); glVertex3f( (size/2), -(size/2), 0.0f );
-      glTexCoord2f(1.0-stretch, 1.0-stretch); glVertex3f( (size/2),(size/2),0.0f); 
-      glTexCoord2f(0.0+stretch, 1.0-stretch); glVertex3f( -(size/2),(size/2),0.0f);
-    }
-    else
-    {
-      glTexCoord2f(0.0, 0.0 ); glVertex3f( -(size/2), -(size/2),0.0f); 
-      glTexCoord2f(1.0, 0.0 ); glVertex3f( (size/2), -(size/2), 0.0f );
-      glTexCoord2f(1.0, 1.0); glVertex3f( (size/2),(size/2),0.0f); 
-      glTexCoord2f(0.0, 1.0); glVertex3f( -(size/2),(size/2),0.0f);
-    }
+	// use glColor4f(f,f,f,f) for rgb + alpha
+	glColor4f( rgb, rgb, rgb ,vAlpha);
+			
+	if (stretch > 1.0f)
+	{
+	  stretch = 0.5 - ((float) 1) / (2*stretch);
+	  glTexCoord2f(0.0+ stretch, 0.0+stretch); glVertex3f( -(size/2), -(size/2),0.0f); 
+	  glTexCoord2f(1.0-stretch, 0.0+stretch); glVertex3f( (size/2), -(size/2), 0.0f );
+	  glTexCoord2f(1.0-stretch, 1.0-stretch); glVertex3f( (size/2),(size/2),0.0f); 
+	  glTexCoord2f(0.0+stretch, 1.0-stretch); glVertex3f( -(size/2),(size/2),0.0f);
+	}
+	else
+	{
+	  glTexCoord2f(0.0, 0.0 ); glVertex3f( -(size/2), -(size/2),0.0f); 
+	  glTexCoord2f(1.0, 0.0 ); glVertex3f( (size/2), -(size/2), 0.0f );
+	  glTexCoord2f(1.0, 1.0); glVertex3f( (size/2),(size/2),0.0f); 
+	  glTexCoord2f(0.0, 1.0); glVertex3f( -(size/2),(size/2),0.0f);
+	}
   glEnd();
   glPopMatrix();
 }
@@ -455,33 +459,33 @@ float particleSystem::waveform(int type, float base, float amp, float phase, flo
   float nom = normalise(freq*time + phase);
   switch (type) 
   {
-    case WAVE_SIN:
-      value = base + amp * sin( 2*PI* nom );
-      break;
-      
-    case WAVE_SQUARE:
-      if ( nom < 0.5) value = base + amp;
-      else value = base - amp;
-      break;
-      
-    case WAVE_TRIANGLE: 
-      if (nom<0.25) value = base + 4*amp*nom;
-      else if (nom<0.75) value = base + amp - 4*(nom-0.25)*amp;
-      else value = base + 4*amp*(nom-1);
-      
-      break;
-      
-    case WAVE_SAWTOOTH:
-      value = base + amp * nom;
-      break;
-      
-    case WAVE_INVSAWTOOTH:
-      value = base + amp - (amp * nom);
-      break;
-      
-    default: // WAVE CONST
-      value = base;
-      break;
+	case WAVE_SIN:
+	  value = base + amp * sin( 2*PI* nom );
+	  break;
+	  
+	case WAVE_SQUARE:
+	  if ( nom < 0.5) value = base + amp;
+	  else value = base - amp;
+	  break;
+	  
+	case WAVE_TRIANGLE: 
+	  if (nom<0.25) value = base + 4*amp*nom;
+	  else if (nom<0.75) value = base + amp - 4*(nom-0.25)*amp;
+	  else value = base + 4*amp*(nom-1);
+	  
+	  break;
+	  
+	case WAVE_SAWTOOTH:
+	  value = base + amp * nom;
+	  break;
+	  
+	case WAVE_INVSAWTOOTH:
+	  value = base + amp - (amp * nom);
+	  break;
+	  
+	default: // WAVE CONST
+	  value = base;
+	  break;
   }
   
   return value;    
@@ -518,30 +522,30 @@ bool particleSystem::buildShaderFile(char *filename)
 	std::ofstream outFile(filename,std::ios::out|std::ios::app);
   if (outFile.is_open())
   {
-    
-    time_t rawtime;
-    tm * timeinfo;
-    time( &rawtime );
-    timeinfo = localtime( &rawtime );
-    
-    outFile << "// Generated by Frozen Sand Particle Studio\n// " << asctime(timeinfo);
+	
+	time_t rawtime;
+	tm * timeinfo;
+	time( &rawtime );
+	timeinfo = localtime( &rawtime );
+	
+	outFile << "// Generated by Frozen Sand Particle Studio\n// " << asctime(timeinfo);
 	outFile << "// Use on a " << size << "x" << size << " unit brush face\n";
-    outFile << "\n\n";
-    char newShaderName[64];
-    char sepLocation;
-    char shader[64];
-    // GO
-    for (int i=0; i<numParticles; i++)
-    {
-      // Shader's Title
-      sepLocation = std::strcspn(&shaderBaseName[9],"/");
-      std::strncpy(newShaderName,shaderBaseName,sepLocation + 10);
-      newShaderName[sepLocation+10]=0; // ADD NULL-TERMINATOR
-      std::strcpy(shader,&shaderBaseName[sepLocation+10]);
-      std::strcat(newShaderName,"zz");
-      std::strcat(newShaderName,shader);
-      std::strcat(newShaderName,"_");
-      
+	outFile << "\n\n";
+	char newShaderName[64];
+	char sepLocation;
+	char shader[64];
+	// GO
+	for (int i=0; i<numParticles; i++)
+	{
+	  // Shader's Title
+	  sepLocation = std::strcspn(&shaderBaseName[9],"/");
+	  std::strncpy(newShaderName,shaderBaseName,sepLocation + 10);
+	  newShaderName[sepLocation+10]=0; // ADD NULL-TERMINATOR
+	  std::strcpy(shader,&shaderBaseName[sepLocation+10]);
+	  std::strcat(newShaderName,"zz");
+	  std::strcat(newShaderName,shader);
+	  std::strcat(newShaderName,"_");
+	  
 	  float z_xComponent = 0.0f;
 	  float z_yComponent = 0.0f;
 	  float z_zComponent = particles[i].height;
@@ -552,112 +556,112 @@ bool particleSystem::buildShaderFile(char *filename)
 
 	  applyRotation(z_xComponent, z_yComponent, z_zComponent);
 	  applyRotation(xy_xComponent,xy_yComponent,xy_zComponent);
-      
-      if (i == 0) outFile << shaderBaseName << '\n';
-      else outFile << newShaderName << i << '\n';
-      outFile << "{\n";
-      //char tempStr[64];
-      //char imageName[64];
-      //char basePathLocation;
-      //std::strcpy(tempStr,std::strstr(textureName,"q3ut4"));
-      //char *strPtr=&tempStr[6];
-      //std::strcpy(tempStr,&tempStr[6]);
-      // Working on pulling qer_editorimage from image path
-      outFile << "\tqer_editorimage " << textureName << '\n';
-      if ((i+1)<numParticles) outFile << "\tq3map_cloneshader " << newShaderName << i+1 << '\n';
-      outFile << "\tsurfaceparm nonsolid\n\tsurfaceparm trans\n\tsurfaceparm nomarks\n\tsurfaceparm nodlight\n";
-      // Z axis movement (Vertical)
-      //Deformvertexes 0 0 p.h wave FUNC 0 1 p ps
-      outFile << "\tdeformvertexes move " << z_xComponent << " " << z_yComponent << " " << z_zComponent << " ";
-      if (zWaveform == WAVE_SIN) outFile << "sin ";
-      else if (zWaveform == WAVE_SQUARE) outFile << "square ";
-      else if (zWaveform == WAVE_TRIANGLE) outFile << "triangle ";
-      else if (zWaveform == WAVE_SAWTOOTH) outFile << "sawtooth ";
-      else if (zWaveform == WAVE_INVSAWTOOTH) outFile << "inversesawtooth ";
-      outFile << particles[i].emitterZBase+zBase << ' ' << particles[i].ampz << ' '<< particles[i].phase << ' ' << hz << '\n';
-      
-      // XY Plane Movement
-      // Deformvertexes X Y 0 wave FUNC 0 1 phase hz
-      outFile << "\tdeformvertexes move " << xy_xComponent << ' ' << xy_yComponent << " " << xy_zComponent<< " ";
-      if (xyWaveform == WAVE_SIN) outFile << "sin ";
-      else if (xyWaveform == WAVE_SQUARE) outFile << "square ";
-      else if (xyWaveform == WAVE_TRIANGLE) outFile << "triangle ";
-      else if (xyWaveform == WAVE_SAWTOOTH) outFile << "sawtooth ";
-      else if (xyWaveform == WAVE_INVSAWTOOTH) outFile << "inversesawtooth ";
-      outFile << particles[i].emitterXYBase << ' ' << particles[i].ampxy << ' ' << particles[i].phase+xyPhase << " " << hz << '\n';
-      outFile << "\tdeformvertexes autosprite\n";
+	  
+	  if (i == 0) outFile << shaderBaseName << '\n';
+	  else outFile << newShaderName << i << '\n';
+	  outFile << "{\n";
+	  //char tempStr[64];
+	  //char imageName[64];
+	  //char basePathLocation;
+	  //std::strcpy(tempStr,std::strstr(textureName,"q3ut4"));
+	  //char *strPtr=&tempStr[6];
+	  //std::strcpy(tempStr,&tempStr[6]);
+	  // Working on pulling qer_editorimage from image path
+	  outFile << "\tqer_editorimage " << textureName << '\n';
+	  if ((i+1)<numParticles) outFile << "\tq3map_cloneshader " << newShaderName << i+1 << '\n';
+	  outFile << "\tsurfaceparm nonsolid\n\tsurfaceparm trans\n\tsurfaceparm nomarks\n\tsurfaceparm nodlight\n";
+	  // Z axis movement (Vertical)
+	  //Deformvertexes 0 0 p.h wave FUNC 0 1 p ps
+	  outFile << "\tdeformvertexes move " << z_xComponent << " " << z_yComponent << " " << z_zComponent << " ";
+	  if (zWaveform == WAVE_SIN) outFile << "sin ";
+	  else if (zWaveform == WAVE_SQUARE) outFile << "square ";
+	  else if (zWaveform == WAVE_TRIANGLE) outFile << "triangle ";
+	  else if (zWaveform == WAVE_SAWTOOTH) outFile << "sawtooth ";
+	  else if (zWaveform == WAVE_INVSAWTOOTH) outFile << "inversesawtooth ";
+	  outFile << particles[i].emitterZBase+zBase << ' ' << particles[i].ampz << ' '<< particles[i].phase << ' ' << hz << '\n';
+	  
+	  // XY Plane Movement
+	  // Deformvertexes X Y 0 wave FUNC 0 1 phase hz
+	  outFile << "\tdeformvertexes move " << xy_xComponent << ' ' << xy_yComponent << " " << xy_zComponent<< " ";
+	  if (xyWaveform == WAVE_SIN) outFile << "sin ";
+	  else if (xyWaveform == WAVE_SQUARE) outFile << "square ";
+	  else if (xyWaveform == WAVE_TRIANGLE) outFile << "triangle ";
+	  else if (xyWaveform == WAVE_SAWTOOTH) outFile << "sawtooth ";
+	  else if (xyWaveform == WAVE_INVSAWTOOTH) outFile << "inversesawtooth ";
+	  outFile << particles[i].emitterXYBase << ' ' << particles[i].ampxy << ' ' << particles[i].phase+xyPhase << " " << hz << '\n';
+	  outFile << "\tdeformvertexes autosprite\n";
 	  if (sort) outFile << "\tsort " << (int) sort <<"\n";
-      
-      outFile << "\tcull disable\n\t{\n\t\tclampmap " << textureName << '\n';
-      outFile << "\t\tblendfunc ";
-      if (srcBlend == GL_ONE) outFile << "GL_ONE ";
-      if (srcBlend == GL_ZERO) outFile << "GL_ZERO ";
-      if (srcBlend == GL_DST_COLOR) outFile << "GL_DST_COLOR ";
-      if (srcBlend == GL_ONE_MINUS_DST_COLOR) outFile << "GL_ONE_MINUS_DST_COLOR ";
-      if (srcBlend == GL_SRC_ALPHA) outFile << "GL_SRC_ALPHA ";
-      if (srcBlend == GL_ONE_MINUS_SRC_ALPHA) outFile << "GL_ONE_MINUS_SRC_ALPHA ";
-      
-      if (dstBlend == GL_ONE) outFile << "GL_ONE\n";
-      if (dstBlend == GL_ZERO) outFile << "GL_ZERO\n";
-      if (dstBlend == GL_SRC_COLOR) outFile << "GL_SRC_COLOR\n";
-      if (dstBlend == GL_ONE_MINUS_SRC_COLOR) outFile << "GL_ONE_MINUS_SRC_COLOR\n";
-      if (dstBlend == GL_SRC_ALPHA) outFile << "GL_SRC_ALPHA\n";
-      if (dstBlend == GL_ONE_MINUS_SRC_ALPHA) outFile << "GL_ONE_MINUS_SRC_ALPHA\n";
-      
-      //rgbgen wave FUNC b a p f
-      outFile << "\t\trgbgen ";
-      if (rgbgen_waveform == WAVE_SIN) outFile << "wave sin ";
-      if (rgbgen_waveform == WAVE_SQUARE) outFile << "wave square ";
-      if (rgbgen_waveform == WAVE_TRIANGLE) outFile << "wave triangle ";
-      if (rgbgen_waveform == WAVE_SAWTOOTH) outFile << "wave sawtooth ";
-      if (rgbgen_waveform == WAVE_INVSAWTOOTH) outFile << "wave inversesawtooth ";
-      if (rgbgen_waveform == WAVE_CONST) 
-      {
-        outFile << "const ( " << clampFloat( particles[i].rgbgen_base,0.0f,1.0f) << " " << clampFloat( particles[i].rgbgen_base,0.0f,1.0f) << " " << clampFloat( particles[i].rgbgen_base,0.0f,1.0f) << " )\n";
-      }
-      else
-      {
-        //base amp phase freq
-        outFile << particles[i].rgbgen_base << " " << particles[i].rgbgen_amp << " " << particles[i].phase+rgbPhase << " " << hz << '\n';
-      }
-      
-      
-      //alphagen
-      outFile << "\t\talphagen ";
-      if (alphagen_waveform == WAVE_SIN) outFile << "wave sin ";
-      if (alphagen_waveform == WAVE_SQUARE) outFile << "wave square ";
-      if (alphagen_waveform == WAVE_TRIANGLE) outFile << "wave triangle ";
-      if (alphagen_waveform == WAVE_SAWTOOTH) outFile << "wave sawtooth ";
-      if (alphagen_waveform == WAVE_INVSAWTOOTH) outFile << "wave inversesawtooth ";
-      if (alphagen_waveform == WAVE_CONST) 
-      {
-        outFile << "const " << clampFloat(particles[i].alphagen_base,0.0f,1.0f) << "\n" ;
-      }
-      else
-      {
-        outFile << particles[i].alphagen_base << " " << particles[i].alphagen_amp << " " << particles[i].phase+alphaPhase << " " << hz << '\n';
-      }
-      
-      // tcmod rotate
-      
-      if (particles[i].rotSpeed != 0) outFile << "\t\ttcMod rotate " << particles[i].rotSpeed << '\n';
-      
-      //tcmod stretch
-      
-      if (scale_waveform != WAVE_CONST) 
-      {
-        outFile << "\t\ttcMod stretch ";
-        if (scale_waveform == WAVE_SIN) outFile << "sin ";
-        if (scale_waveform == WAVE_SQUARE) outFile << "square ";
-        if (scale_waveform == WAVE_TRIANGLE) outFile << "triangle ";
-        if (scale_waveform == WAVE_SAWTOOTH) outFile << "sawtooth ";
-        if (scale_waveform == WAVE_INVSAWTOOTH) outFile << "inversesawtooth ";
-        outFile << particles[i].scale_base << " " << particles[i].scale_amp << " " << particles[i].phase+scalePhase << " " << hz << '\n';
-      }
-      
-      outFile << "\t}\n}\n\n"; 
-      
-    }
+	  
+	  outFile << "\tcull disable\n\t{\n\t\tclampmap " << textureName << '\n';
+	  outFile << "\t\tblendfunc ";
+	  if (srcBlend == GL_ONE) outFile << "GL_ONE ";
+	  if (srcBlend == GL_ZERO) outFile << "GL_ZERO ";
+	  if (srcBlend == GL_DST_COLOR) outFile << "GL_DST_COLOR ";
+	  if (srcBlend == GL_ONE_MINUS_DST_COLOR) outFile << "GL_ONE_MINUS_DST_COLOR ";
+	  if (srcBlend == GL_SRC_ALPHA) outFile << "GL_SRC_ALPHA ";
+	  if (srcBlend == GL_ONE_MINUS_SRC_ALPHA) outFile << "GL_ONE_MINUS_SRC_ALPHA ";
+	  
+	  if (dstBlend == GL_ONE) outFile << "GL_ONE\n";
+	  if (dstBlend == GL_ZERO) outFile << "GL_ZERO\n";
+	  if (dstBlend == GL_SRC_COLOR) outFile << "GL_SRC_COLOR\n";
+	  if (dstBlend == GL_ONE_MINUS_SRC_COLOR) outFile << "GL_ONE_MINUS_SRC_COLOR\n";
+	  if (dstBlend == GL_SRC_ALPHA) outFile << "GL_SRC_ALPHA\n";
+	  if (dstBlend == GL_ONE_MINUS_SRC_ALPHA) outFile << "GL_ONE_MINUS_SRC_ALPHA\n";
+	  
+	  //rgbgen wave FUNC b a p f
+	  outFile << "\t\trgbgen ";
+	  if (rgbgen_waveform == WAVE_SIN) outFile << "wave sin ";
+	  if (rgbgen_waveform == WAVE_SQUARE) outFile << "wave square ";
+	  if (rgbgen_waveform == WAVE_TRIANGLE) outFile << "wave triangle ";
+	  if (rgbgen_waveform == WAVE_SAWTOOTH) outFile << "wave sawtooth ";
+	  if (rgbgen_waveform == WAVE_INVSAWTOOTH) outFile << "wave inversesawtooth ";
+	  if (rgbgen_waveform == WAVE_CONST) 
+	  {
+		outFile << "const ( " << clampFloat( particles[i].rgbgen_base,0.0f,1.0f) << " " << clampFloat( particles[i].rgbgen_base,0.0f,1.0f) << " " << clampFloat( particles[i].rgbgen_base,0.0f,1.0f) << " )\n";
+	  }
+	  else
+	  {
+		//base amp phase freq
+		outFile << particles[i].rgbgen_base << " " << particles[i].rgbgen_amp << " " << particles[i].phase+rgbPhase << " " << hz << '\n';
+	  }
+	  
+	  
+	  //alphagen
+	  outFile << "\t\talphagen ";
+	  if (alphagen_waveform == WAVE_SIN) outFile << "wave sin ";
+	  if (alphagen_waveform == WAVE_SQUARE) outFile << "wave square ";
+	  if (alphagen_waveform == WAVE_TRIANGLE) outFile << "wave triangle ";
+	  if (alphagen_waveform == WAVE_SAWTOOTH) outFile << "wave sawtooth ";
+	  if (alphagen_waveform == WAVE_INVSAWTOOTH) outFile << "wave inversesawtooth ";
+	  if (alphagen_waveform == WAVE_CONST) 
+	  {
+		outFile << "const " << clampFloat(particles[i].alphagen_base,0.0f,1.0f) << "\n" ;
+	  }
+	  else
+	  {
+		outFile << particles[i].alphagen_base << " " << particles[i].alphagen_amp << " " << particles[i].phase+alphaPhase << " " << hz << '\n';
+	  }
+	  
+	  // tcmod rotate
+	  
+	  if (particles[i].rotSpeed != 0) outFile << "\t\ttcMod rotate " << particles[i].rotSpeed << '\n';
+	  
+	  //tcmod stretch
+	  
+	  if (scale_waveform != WAVE_CONST) 
+	  {
+		outFile << "\t\ttcMod stretch ";
+		if (scale_waveform == WAVE_SIN) outFile << "sin ";
+		if (scale_waveform == WAVE_SQUARE) outFile << "square ";
+		if (scale_waveform == WAVE_TRIANGLE) outFile << "triangle ";
+		if (scale_waveform == WAVE_SAWTOOTH) outFile << "sawtooth ";
+		if (scale_waveform == WAVE_INVSAWTOOTH) outFile << "inversesawtooth ";
+		outFile << particles[i].scale_base << " " << particles[i].scale_amp << " " << particles[i].phase+scalePhase << " " << hz << '\n';
+	  }
+	  
+	  outFile << "\t}\n}\n\n"; 
+	  
+	}
   }
   else return false;
   
@@ -1058,9 +1062,4 @@ float particleSystem::clampFloat(float input,float min,float max)
 	if (input > max) input = max;
 	if (input < min) input = min;
 	return input;
-}
-
-time_t particleSystem::resetTime()
-{
-	return lastResetTime = clock();
 }

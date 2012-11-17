@@ -48,7 +48,7 @@ int tab::unBindEnt(baseEnt *ptr)
   while (linked[loc] != ptr)
   {
     loc++;
-    if (loc = TAB_CAPACITY) return -1; //not found
+    if (loc == TAB_CAPACITY) return -1; //not found
   }
   linked[loc] = 0;
   return loc;

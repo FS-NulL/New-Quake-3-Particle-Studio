@@ -7,15 +7,15 @@
 sidePannel::sidePannel()
 {
 	location.x = 120; // Default Location
-	location.y = 395;
+	location.y = 335;
 	size.x = 520;
-	size.y = 85;
+	size.y = 145;
 
 	visible = false;
 
 	bgColor.R = 0.2f; bgColor.G = 0.3f; bgColor.B = 0.6f;
 
-	for (int i=0;i<32;i++) boundEnts[i] = 0; // Initialise array of entitys
+	for (int i=0;i<MaxEnts;i++) boundEnts[i] = 0; // Initialise array of entitys
 }
 
 sidePannel::~sidePannel()
@@ -36,8 +36,10 @@ int sidePannel::draw()
 int sidePannel::bindEnt(baseEnt *p)
 {
 	int i = 0;
-	while (boundEnts[i] != 0) i++;
-	if (i>=128) return -1;
+	while (boundEnts[i] != 0) {
+		i++;
+		if (i>=MaxEnts) return -1;
+	}
 	boundEnts[i] = p;
 	return i;
 }

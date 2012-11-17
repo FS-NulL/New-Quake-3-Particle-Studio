@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <functional>
 #include "basicStructs.h"
 #include "textbox.h"
 #include "label.h"
@@ -23,7 +24,8 @@ class userEntry
   int eventHandler(UINT message,WPARAM key,int mousex,int mousey);
   vec2D initialTL; // x/y coords of the bounds of the slider entity
   vec2D initialBR; // only need topleft / bottom right, its a RECT!
-  int (*onChange)(int);
+  std::function<void(int)> onChange;
+  //void (*onChange)(int);
 };
 
 

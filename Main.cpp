@@ -1,7 +1,7 @@
 /*
    Name: PARTICLE STUDIO
    Author: Jonathan '$NulL' Norton
-   Date: May, 2008 - June, 2011 (Blimey!)
+   Date: May, 2008 - Nov, 2012 (Blimey!)
 */
 
 // Includes
@@ -16,6 +16,7 @@
 #include <gl/glu.h>
 
 #include <fstream> // File Output
+#include <algorithm>
 
 #include "basicstructs.h"
 #include "horizslider.h"
@@ -38,7 +39,7 @@
 #define WN_WIDTH 1024
 #define WN_HEIGHT 768
 
-#define MAX_SYSTEMS 4
+#define MAX_SYSTEMS 15
 
 #define SYS_BUT_ACTIVE 0.5,0.5,0.9
 #define SYS_BUT_DISABLE 0.5,0.5,0.5
@@ -58,86 +59,90 @@ userEntry entry;
 
 class ENTITIES 
 {
-    class ENT 
-    {
-       public:
-        baseEnt *entPtr;
-        ENT();
-        int eventRelay(UINT message,WPARAM key,int mousex,int mousey);
-    }ents[1024];
-    
-    public:
+public:
+	static const int MaxEnts = 1024;	
+
+private:
+	class ENT 
+	{
+	   public:
+		baseEnt *entPtr;
+		ENT();
+		int eventRelay(UINT message,WPARAM key,int mousex,int mousey);
+	}ents[MaxEnts];
+	
+	public:
 	int active;// location of active ent in array ents[x]
-    int hoverActive; // location of hoverActive ent in array ents[x]
-    int lastActive; // Location of last active ent, for key notching
-     ENTITIES();
-    //~ENTITIES();
-    int findEnt(int x,int y); // Return Location in array of ents[x], 0 if mouse not over ent;
-    //int bindHorizSlider(horizSlider *ptr); // Returns -1 if ents[] is full
-    //int unbindHorizSlider(horizSlider *ptr); // Returns -1 if not foud.
-    int bindEnt(baseEnt *ptr); // Returns -1 if ents[] is full
-    int unbindEnt(baseEnt *ptr); // Returns -1 if not foud.
-    int eventRelay(UINT message,WPARAM key,int mousex,int mousey); // Message Type , Key Press, gl_mousex, gl_mousey
-    int drawAll();
-    int forceUnActive();
+	int hoverActive; // location of hoverActive ent in array ents[x]
+	int lastActive; // Location of last active ent, for key notching
+	 ENTITIES();
+	//~ENTITIES();
+	int findEnt(int x,int y); // Return Location in array of ents[x], 0 if mouse not over ent;
+	//int bindHorizSlider(horizSlider *ptr); // Returns -1 if ents[] is full
+	//int unbindHorizSlider(horizSlider *ptr); // Returns -1 if not foud.
+	int bindEnt(baseEnt *ptr); // Returns -1 if ents[] is full
+	int unbindEnt(baseEnt *ptr); // Returns -1 if not foud.
+	int eventRelay(UINT message,WPARAM key,int mousex,int mousey); // Message Type , Key Press, gl_mousex, gl_mousey
+	int drawAll();
+	int forceUnActive();
 } entities;
 
 ENTITIES::ENTITIES()
 {
-    active = -1;
-    hoverActive = -1;
-    lastActive = -1;
+	active = -1;
+	hoverActive = -1;
+	lastActive = -1;
 }
 
 ENTITIES::ENT::ENT()
 {
-    entPtr = 0;
+	entPtr = 0;
 }
 
 int ENTITIES::ENT::eventRelay(UINT message,WPARAM key,int mousex,int mousey)
 {
-    if (entPtr) (*entPtr).eventHandler(message,key,mousex,mousey);
-    return 1;
+	if (entPtr) (*entPtr).eventHandler(message,key,mousex,mousey);
+	return 1;
 }
 
 int ENTITIES::bindEnt(baseEnt *ptr)
 {
-    int loc = 0;
-    while (ents[loc].entPtr != 0) 
-    {
-      loc++;  
-      if (loc > 1023) return -1;   
-    }
-    ents[loc].entPtr = ptr;
-    return loc;
+	int loc = 0;
+	while (ents[loc].entPtr != 0) 
+	{
+	  loc++;  
+	  if (loc > MaxEnts) return -1;   
+	}
+	ents[loc].entPtr = ptr;
+	return loc;
 }
 
 int ENTITIES::unbindEnt(baseEnt *ptr)
 {
-    int loc = 0;
-    while (ents[loc].entPtr != ptr) 
-    {
-      loc++;  // watchout Infinite loop of ptr isnt an entry!
-      if (loc > 1023) return -1;
-    }
-    ents[loc].entPtr = 0;
-    return 0;
+	int loc = 0;
+	while (ents[loc].entPtr != ptr) 
+	{
+	  loc++;  // watchout Infinite loop of ptr isnt an entry!
+	  if (loc > MaxEnts) return -1;
+	}
+	ents[loc].entPtr = 0;
+	return 0;
 }
 
 int ENTITIES::findEnt(int x,int y)
 {
    int loc = 0;
-   while (loc < 1024) 
+   while (loc < MaxEnts) 
    {
-      if (ents[loc].entPtr != 0) 
-      {
-         baseEnt* ptr = ents[loc].entPtr;
-         if ( (x >= (*ptr).location.x ) && (x <= (*ptr).location.x + (*ptr).size.x ) && (y >= (*ptr).location.y) && (y <= (*ptr).location.y + (*ptr).size.y ) )
-         {
-            return loc;
-         }       
-      }
-      loc++;
+	  if (ents[loc].entPtr != 0) 
+	  {
+		 baseEnt* ptr = ents[loc].entPtr;
+		 if ( (x >= (*ptr).location.x ) && (x <= (*ptr).location.x + (*ptr).size.x ) && (y >= (*ptr).location.y) && (y <= (*ptr).location.y + (*ptr).size.y ) )
+		 {
+			return loc;
+		 }       
+	  }
+	  loc++;
    }
    return -1;
 }
@@ -145,140 +150,114 @@ int ENTITIES::findEnt(int x,int y)
 int ENTITIES::eventRelay(UINT message,WPARAM key,int mousex,int mousey)
 {
  
-    int temp_active = active;
+	int temp_active = active;
 	baseEnt* ePtr = ents[temp_active].entPtr;
-    // if active allready, send message strait to ent
-    // then if message is mouseup set active to -1
-    //std::ofstream oFile("events.txt",std::ios::app);
-    
-    //oFile << message << ' ' << key << ' ' << mousex << ' ' << mousey << '\n';
-    //oFile.flush();
-    //oFile.close();
-    
-    if (temp_active != -1) // have active ent, LMB is down
-    {
-      //oFile << "Got Active: " << temp_active << '\n'; 
-      //oFile.flush();
-        // Send Event Direct
-        ents[temp_active].eventRelay(message,key,mousex,mousey);
+	
+	if (temp_active != -1) // have active ent, LMB is down
+	{
+		// Send Event Direct
+		ents[temp_active].eventRelay(message,key,mousex,mousey);
 		// if the current entPtr has become corrupt during the event handling, return imediatly, reseting active hoveractive to -1
 		if (ents[temp_active].entPtr == 0)
 		{
 			active = hoverActive = lastActive = -1;
 			return -1;
 		}
-        //oFile << "AFTER ENT RELAY ACTIVE: " << temp_active << '\n';
-        //oFile.flush();
-        // If LMB UP  set active to -1
-        if (message == WM_LBUTTONUP) {
-            // is active still hoverActive?
-            //oFile << "BUTTON UP ACTIVE: " << temp_active << '\n';
-            //oFile.flush();
-            if ( (*ents[temp_active].entPtr).inBounds(mousex,mousey) ) hoverActive = temp_active;
-            temp_active = -1;
-        }  
-        active = temp_active;
-        return active;
-    }
-    //oFile << "No Active: " << temp_active << '\n'; 
-    //oFile.flush();    
-    int loc = findEnt(mousex,mousey);    
-    // Mouse Left Hover Ent 
-    if (message == WM_MOUSEMOVE)
-    {
-        if ((loc != hoverActive) && (hoverActive != -1))
-        {
-            ents[hoverActive].eventRelay(message,key,mousex,mousey);
-            //return hoverActive;
-        }
-    }
-    
+		// If LMB UP  set active to -1
+		if (message == WM_LBUTTONUP) {
+			// is active still hoverActive?		
+			if ( (*ents[temp_active].entPtr).inBounds(mousex,mousey) ) hoverActive = temp_active;
+			temp_active = -1;
+		}  
+		active = temp_active;
+		return active;
+	}
+	int loc = findEnt(mousex,mousey);    
+	// Mouse Left Hover Ent 
+	if (message == WM_MOUSEMOVE)
+	{
+		if ((loc != hoverActive) && (hoverActive != -1))
+		{
+			ents[hoverActive].eventRelay(message,key,mousex,mousey);
+		}
+	}
+	
 
-    if (loc != -1)
-    {
-        if (message == WM_LBUTTONDOWN)
-        {
-            temp_active = lastActive = loc;
-            hoverActive = -1;
-            ents[temp_active].eventRelay(message,key,mousex,mousey);
-            active = temp_active;
-            return active;
-        }
-        else
-        {
-            if (message == WM_MOUSEMOVE)
-            {
-              hoverActive = loc;
-              ents[hoverActive].eventRelay(message,key,mousex,mousey);
-            }
-            // right mouse click code here, but how to check if its a slider or not?
-            if (message == WM_RBUTTONDOWN)
-            {
-              if ((*ents[loc].entPtr).entType()) // default 0 , slider ==1
-              {
-                entry.setActive();
-                entry.initialBR.x = (*ents[loc].entPtr).location.x + (*ents[loc].entPtr).size.x;
-                entry.initialBR.y = (*ents[loc].entPtr).location.y;
-                entry.initialTL.x = (*ents[loc].entPtr).location.x;
-                entry.initialTL.y = (*ents[loc].entPtr).location.y + (*ents[loc].entPtr).size.y;
-                if ((*((horizSlider*)ents[loc].entPtr)).type == TYPE_FLOAT) 
-                {
-                  entry.isFloat = true;
-                  ftoa(  ((float)(*((horizSlider*)ents[loc].entPtr)).value) / 10000  , entry.entryBox.string);
-                  removeTrailingZeros( entry.entryBox.string );
-                }
-                else 
-                {
-                  entry.isFloat = false;
-                  itoa(  (*((horizSlider*)ents[loc].entPtr)).value  , entry.entryBox.string);
-                  //std::ofstream test1("start_entry.txt",std::ios::app);
-                  //test1 << entry.entryBox.string<< '\n';
-                  //test1.close();
-                }
-                entry.onChange = (*((horizSlider*)ents[loc].entPtr)).onChange;
-                entry.ptr = ((horizSlider*)ents[loc].entPtr);
-              }              
-            }
-        }
-    }
+	if (loc != -1)
+	{
+		if (message == WM_LBUTTONDOWN)
+		{
+			temp_active = lastActive = loc;
+			hoverActive = -1;
+			ents[temp_active].eventRelay(message,key,mousex,mousey);
+			active = temp_active;
+			return active;
+		}
+		else
+		{
+			if (message == WM_MOUSEMOVE)
+			{
+			  hoverActive = loc;
+			  ents[hoverActive].eventRelay(message,key,mousex,mousey);
+			}
+			// right mouse click code here, but how to check if its a slider or not?
+			if (message == WM_RBUTTONDOWN)
+			{
+			  if ((*ents[loc].entPtr).entType()) // default 0 , slider ==1
+			  {
+				entry.setActive();
+				entry.initialBR.x = (*ents[loc].entPtr).location.x + (*ents[loc].entPtr).size.x;
+				entry.initialBR.y = (*ents[loc].entPtr).location.y;
+				entry.initialTL.x = (*ents[loc].entPtr).location.x;
+				entry.initialTL.y = (*ents[loc].entPtr).location.y + (*ents[loc].entPtr).size.y;
+				if ((*((horizSlider*)ents[loc].entPtr)).type == TYPE_FLOAT) 
+				{
+				  entry.isFloat = true;
+				  ftoa(  ((float)(*((horizSlider*)ents[loc].entPtr)).value) / 10000  , entry.entryBox.string);
+				  removeTrailingZeros( entry.entryBox.string );
+				}
+				else 
+				{
+				  entry.isFloat = false;
+				  itoa(  (*((horizSlider*)ents[loc].entPtr)).value  , entry.entryBox.string);
+				}
+				entry.onChange = (*((horizSlider*)ents[loc].entPtr)).onChange;
+				entry.ptr = ((horizSlider*)ents[loc].entPtr);
+			  }              
+			}
+		}
+	}
 
-    if ((message == WM_KEYDOWN) || ((message == WM_KEYUP)))
-    {
-        if (lastActive > -1) ents[lastActive].eventRelay(message,key,mousex,mousey);
-        return lastActive;
-    }
-    
-    active = temp_active;
-    
-    //oFile << "END Events relay\n";
-    //oFile.close();
-    
-    // if left mousedown set active ent
-    // else if not active allready set hoveractive
-    
-    // forward event to ent
-  return 0;
-    
+	if ((message == WM_KEYDOWN) || ((message == WM_KEYUP)))
+	{
+		if (lastActive > -1) ents[lastActive].eventRelay(message,key,mousex,mousey);
+		return lastActive;
+	}
+	
+	active = temp_active;
+
+	return 0;
+	
 }
 
 int ENTITIES::drawAll()  // Returns last ent location +1
 {
   int loc = 0;
   int c   = 0;
-  while (loc < 1024) // What if theres a gap because an ent has been un bound?
+  while (loc < MaxEnts) // What if theres a gap because an ent has been un bound?
   {
-    if (ents[loc].entPtr != 0)
-    {
-      baseEnt *p = ents[loc].entPtr;
-      if (c!=active) (*p).draw();   // Horrible Hack, something is corrupting the active variable -- the the processes of unbinding the systems button
-      c++;
-    }
-    loc++;
+	if (ents[loc].entPtr != 0)
+	{
+	  baseEnt *p = ents[loc].entPtr;
+	  if (c!=active) (*p).draw();   // Horrible Hack, something is corrupting the active variable -- the the processes of unbinding the systems button
+	  c++;
+	}
+	loc++;
   }
   if (active!=-1) 
   {
-    baseEnt *p = ents[active].entPtr;
-    (*p).draw();
+	baseEnt *p = ents[active].entPtr;
+	if(p) (*p).draw();
   }
   return c;
 }
@@ -344,8 +323,11 @@ sidePannel BGPannel;
 
 bool hideSidePannelBut;
 
+label drawTime;
 button firework;
 button rgbPicker;
+button lockSeed;
+button runOnce;
 button butShowPlayer;
 button butLoad;
 button butSave;
@@ -401,32 +383,16 @@ horizSlider sliderAlphaPhase;
 button butBGPS;
 
 // BGPS Pannel Ents
-button BGLoad1;
-button BGLoad2;
-button BGLoad3;
-button BGLoad4;
-
-//button BGActive1,BGActive2,BGActive3,BGActive4;
-
-horizSlider BGSort1,BGSort2,BGSort3,BGSort4;
-
-label BGName1;
-label BGName2;
-label BGName3;
-label BGName4;
-
-horizSlider BGx1,BGy1,BGz1;		// Positions
-horizSlider BGx2,BGy2,BGz2;
-horizSlider BGx3,BGy3,BGz3;
-horizSlider BGx4,BGy4,BGz4;
-
-horizSlider BGrx1,BGry1,BGrz1;	//System rotations
-horizSlider BGrx2,BGry2,BGrz2;
-horizSlider BGrx3,BGry3,BGrz3;
-horizSlider BGrx4,BGry4,BGrz4;
-
-//button BGActivate1,BGActivate2,BGActivate3,BGActivate4;
-
+//sliders & button pointers
+button buttons[MAX_SYSTEMS];
+label  labels[MAX_SYSTEMS];
+horizSlider sorts[MAX_SYSTEMS];
+horizSlider posXs[MAX_SYSTEMS];
+horizSlider posYs[MAX_SYSTEMS];
+horizSlider posZs[MAX_SYSTEMS];
+horizSlider rotXs[MAX_SYSTEMS];
+horizSlider rotYs[MAX_SYSTEMS];
+horizSlider rotZs[MAX_SYSTEMS];
 label BGLabelLoad, BGLabelName, BGLabelX, BGLabelY, BGLabelZ, BGLabelDel,BGLabelActive,BGLabelSort,BGLabelrX,BGLabelrY,BGLabelrZ;
 
 char togglePlayer=0;
@@ -446,183 +412,183 @@ int BuildTexture(char *szPathName, GLuint &texid);
 
 void scr2w()
 {
-    float x_temp,y_temp;
-    x_temp = mouse.x;
-    y_temp = mouse.y;
-    x_temp = x_temp * ((float)GL_WIDTH/(float)rc.right);
-    y_temp = y_temp * ((float)GL_HEIGHT/(float)rc.bottom);
-    pos.x = (int) x_temp;
-    pos.y = (int) ((GL_HEIGHT-1) - y_temp);
+	float x_temp,y_temp;
+	x_temp = mouse.x;
+	y_temp = mouse.y;
+	x_temp = x_temp * ((float)GL_WIDTH/(float)rc.right);
+	y_temp = y_temp * ((float)GL_HEIGHT/(float)rc.bottom);
+	pos.x = (int) x_temp;
+	pos.y = (int) ((GL_HEIGHT-1) - y_temp);
 }
 
 void draw0()
 {
-    glVertex2f((0),(0));glVertex2f((10),(0));
-    glVertex2f((0),(0));glVertex2f((0),(10));
-    glVertex2f((10),(10));glVertex2f((10),(0));
-    glVertex2f((10),(10));glVertex2f((0),(10));
+	glVertex2f((0),(0));glVertex2f((10),(0));
+	glVertex2f((0),(0));glVertex2f((0),(10));
+	glVertex2f((10),(10));glVertex2f((10),(0));
+	glVertex2f((10),(10));glVertex2f((0),(10));
 }
 
 void draw1()
 {
-    glVertex2f(10,0);glVertex2f(10,10);
+	glVertex2f(10,0);glVertex2f(10,10);
 }
 
 void draw2()
 {
-    glVertex2f(10,0);glVertex2f(0,0);
-    glVertex2f(0,0);glVertex2f(0,5);
-    glVertex2f(0,5);glVertex2f(10,5);
-    glVertex2f(10,5);glVertex2f(10,10);
-    glVertex2f(10,10);glVertex2f(0,10);
+	glVertex2f(10,0);glVertex2f(0,0);
+	glVertex2f(0,0);glVertex2f(0,5);
+	glVertex2f(0,5);glVertex2f(10,5);
+	glVertex2f(10,5);glVertex2f(10,10);
+	glVertex2f(10,10);glVertex2f(0,10);
 }
 
 void draw3()
 {
-    glVertex2f(0,0);glVertex2f(10,0);
-    glVertex2f(10,0);glVertex2f(10,10);
-    glVertex2f(10,10);glVertex2f(0,10);
-    glVertex2f(0,5);glVertex2f(10,5);
+	glVertex2f(0,0);glVertex2f(10,0);
+	glVertex2f(10,0);glVertex2f(10,10);
+	glVertex2f(10,10);glVertex2f(0,10);
+	glVertex2f(0,5);glVertex2f(10,5);
 }
 
 void draw4()
 {
-    glVertex2f(10,0);glVertex2f(10,10);
-    glVertex2f(0,10);glVertex2f(0,5);
-    glVertex2f(0,5);glVertex2f(10,5);
+	glVertex2f(10,0);glVertex2f(10,10);
+	glVertex2f(0,10);glVertex2f(0,5);
+	glVertex2f(0,5);glVertex2f(10,5);
 }
 
 void draw5()
 {
-    glVertex2f(0,0);glVertex2f(10,0);
-    glVertex2f(10,0);glVertex2f(10,5);
-    glVertex2f(10,5);glVertex2f(0,5);
-    glVertex2f(0,5);glVertex2f(0,10);
-    glVertex2f(0,10);glVertex2f(10,10);
+	glVertex2f(0,0);glVertex2f(10,0);
+	glVertex2f(10,0);glVertex2f(10,5);
+	glVertex2f(10,5);glVertex2f(0,5);
+	glVertex2f(0,5);glVertex2f(0,10);
+	glVertex2f(0,10);glVertex2f(10,10);
 }
 
 void draw6()
 {
-    glVertex2f(10,10);glVertex2f(0,10);
-    glVertex2f(0,10);glVertex2f(0,0);
-    glVertex2f(0,0);glVertex2f(10,0);
-    glVertex2f(10,0);glVertex2f(10,5);
-    glVertex2f(10,5);glVertex2f(0,5);
+	glVertex2f(10,10);glVertex2f(0,10);
+	glVertex2f(0,10);glVertex2f(0,0);
+	glVertex2f(0,0);glVertex2f(10,0);
+	glVertex2f(10,0);glVertex2f(10,5);
+	glVertex2f(10,5);glVertex2f(0,5);
 }
 
 void draw7()
 {
-    glVertex2f(0,10);glVertex2f(10,10);
-    glVertex2f(10,10);glVertex2f(10,0);
+	glVertex2f(0,10);glVertex2f(10,10);
+	glVertex2f(10,10);glVertex2f(10,0);
 }
 
 void draw8()
 {
-    glVertex2f(0,0);glVertex2f(10,0);
-    glVertex2f(0,5);glVertex2f(10,5);
-    glVertex2f(0,10);glVertex2f(10,10);
-    glVertex2f(0,0);glVertex2f(0,10);
-    glVertex2f(10,0);glVertex2f(10,10);
+	glVertex2f(0,0);glVertex2f(10,0);
+	glVertex2f(0,5);glVertex2f(10,5);
+	glVertex2f(0,10);glVertex2f(10,10);
+	glVertex2f(0,0);glVertex2f(0,10);
+	glVertex2f(10,0);glVertex2f(10,10);
 }
 
 void draw9()
 {
-    glVertex2f(10,0);glVertex2f(10,10);
-    glVertex2f(10,10);glVertex2f(0,10);
-    glVertex2f(0,10);glVertex2f(0,5);
-    glVertex2f(0,5);glVertex2f(10,5);
+	glVertex2f(10,0);glVertex2f(10,10);
+	glVertex2f(10,10);glVertex2f(0,10);
+	glVertex2f(0,10);glVertex2f(0,5);
+	glVertex2f(0,5);glVertex2f(10,5);
 }
 
 void drawMPos()
 {
-    int temp;
-    int xhun = pos.x / 100; // Hundreds
-    temp = pos.x % 100;
-    int xten = temp / 10; // Tens
-    temp = temp % 10; // Units
-    
-    
-    
-    
-          glPushMatrix();
-          glTranslatef((30),(450),0);
-          glBegin(GL_LINES);
-            glColor3f( 1.0f, 1.0f, 1.0f );
-            if (xhun == 0) draw0();if (xhun == 1) draw1();
-            if (xhun == 2) draw2();if (xhun == 3) draw3();
-            if (xhun == 4) draw4();if (xhun == 5) draw5();
-            if (xhun == 6) draw6();if (xhun == 7) draw7();
-            if (xhun == 8) draw8();if (xhun == 9) draw9();
-          glEnd();
-          glPopMatrix();
-          
-          glPushMatrix();
-          glTranslatef((45),(450),0);
-          glBegin(GL_LINES);
-            glColor3f( 1.0f, 1.0f, 1.0f );
-            if (xten == 0) draw0();if (xten == 1) draw1();
-            if (xten == 2) draw2();if (xten == 3) draw3();
-            if (xten == 4) draw4();if (xten == 5) draw5();
-            if (xten == 6) draw6();if (xten == 7) draw7();
-            if (xten == 8) draw8();if (xten == 9) draw9();
-          glEnd();
-          glPopMatrix();          
-          
-          glPushMatrix();
-          glTranslatef((60),(450),0);
-          glBegin(GL_LINES);
-            glColor3f( 1.0f, 1.0f, 1.0f );
-            if (temp == 0) draw0();if (temp == 1) draw1();
-            if (temp == 2) draw2();if (temp == 3) draw3();
-            if (temp == 4) draw4();if (temp == 5) draw5();
-            if (temp == 6) draw6();if (temp == 7) draw7();
-            if (temp == 8) draw8();if (temp == 9) draw9();
-          glEnd();
-          glPopMatrix();
-          
-    int yhun = pos.y / 100;
-    temp = pos.y % 100;
-    int yten = temp / 10;
-    temp = temp % 10;
+	int temp;
+	int xhun = pos.x / 100; // Hundreds
+	temp = pos.x % 100;
+	int xten = temp / 10; // Tens
+	temp = temp % 10; // Units
+	
+	
+	
+	
+		  glPushMatrix();
+		  glTranslatef((30),(450),0);
+		  glBegin(GL_LINES);
+			glColor3f( 1.0f, 1.0f, 1.0f );
+			if (xhun == 0) draw0();if (xhun == 1) draw1();
+			if (xhun == 2) draw2();if (xhun == 3) draw3();
+			if (xhun == 4) draw4();if (xhun == 5) draw5();
+			if (xhun == 6) draw6();if (xhun == 7) draw7();
+			if (xhun == 8) draw8();if (xhun == 9) draw9();
+		  glEnd();
+		  glPopMatrix();
+		  
+		  glPushMatrix();
+		  glTranslatef((45),(450),0);
+		  glBegin(GL_LINES);
+			glColor3f( 1.0f, 1.0f, 1.0f );
+			if (xten == 0) draw0();if (xten == 1) draw1();
+			if (xten == 2) draw2();if (xten == 3) draw3();
+			if (xten == 4) draw4();if (xten == 5) draw5();
+			if (xten == 6) draw6();if (xten == 7) draw7();
+			if (xten == 8) draw8();if (xten == 9) draw9();
+		  glEnd();
+		  glPopMatrix();          
+		  
+		  glPushMatrix();
+		  glTranslatef((60),(450),0);
+		  glBegin(GL_LINES);
+			glColor3f( 1.0f, 1.0f, 1.0f );
+			if (temp == 0) draw0();if (temp == 1) draw1();
+			if (temp == 2) draw2();if (temp == 3) draw3();
+			if (temp == 4) draw4();if (temp == 5) draw5();
+			if (temp == 6) draw6();if (temp == 7) draw7();
+			if (temp == 8) draw8();if (temp == 9) draw9();
+		  glEnd();
+		  glPopMatrix();
+		  
+	int yhun = pos.y / 100;
+	temp = pos.y % 100;
+	int yten = temp / 10;
+	temp = temp % 10;
 
-    
-          glPushMatrix();
-          glTranslatef((30),(435),0);
-          glBegin(GL_LINES);
-            glColor3f( 1.0f, 1.0f, 1.0f );
-            if (yhun == 0) draw0();if (yhun == 1) draw1();
-            if (yhun == 2) draw2();if (yhun == 3) draw3();
-            if (yhun == 4) draw4();if (yhun == 5) draw5();
-            if (yhun == 6) draw6();if (yhun == 7) draw7();
-            if (yhun == 8) draw8();if (yhun == 9) draw9();
-          glEnd();
-          glPopMatrix();
-          
-          glPushMatrix();
-          glTranslatef((45),(435),0);
-          glBegin(GL_LINES);
-            glColor3f( 1.0f, 1.0f, 1.0f );
-            if (yten == 0) draw0();if (yten == 1) draw1();
-            if (yten == 2) draw2();if (yten == 3) draw3();
-            if (yten == 4) draw4();if (yten == 5) draw5();
-            if (yten == 6) draw6();if (yten == 7) draw7();
-            if (yten == 8) draw8();if (yten == 9) draw9();
-          glEnd();
-          glPopMatrix();          
-          
-          glPushMatrix();
-          glTranslatef((60),(435),0);
-          glBegin(GL_LINES);
-            glColor3f( 1.0f, 1.0f, 1.0f );
-            if (temp == 0) draw0();if (temp == 1) draw1();
-            if (temp == 2) draw2();if (temp == 3) draw3();
-            if (temp == 4) draw4();if (temp == 5) draw5();
-            if (temp == 6) draw6();if (temp == 7) draw7();
-            if (temp == 8) draw8();if (temp == 9) draw9();
-          glEnd();
-          glPopMatrix();
+	
+		  glPushMatrix();
+		  glTranslatef((30),(435),0);
+		  glBegin(GL_LINES);
+			glColor3f( 1.0f, 1.0f, 1.0f );
+			if (yhun == 0) draw0();if (yhun == 1) draw1();
+			if (yhun == 2) draw2();if (yhun == 3) draw3();
+			if (yhun == 4) draw4();if (yhun == 5) draw5();
+			if (yhun == 6) draw6();if (yhun == 7) draw7();
+			if (yhun == 8) draw8();if (yhun == 9) draw9();
+		  glEnd();
+		  glPopMatrix();
+		  
+		  glPushMatrix();
+		  glTranslatef((45),(435),0);
+		  glBegin(GL_LINES);
+			glColor3f( 1.0f, 1.0f, 1.0f );
+			if (yten == 0) draw0();if (yten == 1) draw1();
+			if (yten == 2) draw2();if (yten == 3) draw3();
+			if (yten == 4) draw4();if (yten == 5) draw5();
+			if (yten == 6) draw6();if (yten == 7) draw7();
+			if (yten == 8) draw8();if (yten == 9) draw9();
+		  glEnd();
+		  glPopMatrix();          
+		  
+		  glPushMatrix();
+		  glTranslatef((60),(435),0);
+		  glBegin(GL_LINES);
+			glColor3f( 1.0f, 1.0f, 1.0f );
+			if (temp == 0) draw0();if (temp == 1) draw1();
+			if (temp == 2) draw2();if (temp == 3) draw3();
+			if (temp == 4) draw4();if (temp == 5) draw5();
+			if (temp == 6) draw6();if (temp == 7) draw7();
+			if (temp == 8) draw8();if (temp == 9) draw9();
+		  glEnd();
+		  glPopMatrix();
 
-    
+	
 }
 
 
@@ -785,504 +751,390 @@ void swapSystems(int newPS, int oldPS)
 
 
 }
- 
-int oc1(int p)
+
+// ****************************************************************** //
+// ********************** START EVENT HANDLERS ********************** //
+// ****************************************************************** //
+
+bool syncChanges = false;
+
+template<typename Func>
+void DoChange( Func func )
+{
+	if(syncChanges)  
+	{
+		for (auto &s : systems)	  
+			if(s.active)
+			{
+				func( s.ps );
+			}
+	}
+	else
+	{
+		func( systems[activePS].ps );
+	}
+}
+
+void oc1(int p)
 {  
-  systems[activePS].ps.setNumParticles(p);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {
+			ps.setNumParticles(p);
+			ps.buildParticles();
+		});
 }
 
-int pSizeChange(int s)
+void pSizeChange(int s)
 {
-  systems[activePS].ps.setSize((float)s);
-  return 0;
+	DoChange( [=](particleSystem &ps) {
+			ps.setSize((float)s);
+		});
 }
 
-int heightChange(int h)
+void heightChange(int h)
 {
-  systems[activePS].ps.setHeight((float)h);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {
+			ps.setHeight((float)h);
+			ps.buildParticles();
+		});
 }
 
-int heightVarChange(int hv)
+void heightVarChange(int hv)
 {
-  systems[activePS].ps.setHeightVar(hv);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {
+		ps.setHeightVar(hv);
+		ps.buildParticles();
+	});	
 }
 
-int emitterZChange(int z)
+void emitterZChange(int z)
 {
-  systems[activePS].ps.setEmitterZ((float)z);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {
+		ps.setEmitterZ((float)z);
+		ps.buildParticles();
+	});
 }
 
-int naturalHeight()
+void naturalHeight()
 {
-  double brackets = 1 / (4*systems[activePS].ps.getFrequency());
-  double sq = std::pow(brackets,2);
-  systems[activePS].ps.setHeight(  200 * (float) sq  );
-  systems[activePS].ps.buildParticles();
-  // How can we set the sliders position
-  return 0;
+	DoChange( [=](particleSystem &ps) {
+		double brackets = 1 / (4*ps.getFrequency());
+		double sq = std::pow(brackets,2);
+		ps.setHeight(  200 * (float) sq  );
+		ps.buildParticles();
+	});
 }
 
-int naturalFreq()
+void naturalFreq()
 {
-  float insqrt = systems[activePS].ps.getHeight() / 200;
-  systems[activePS].ps.setFrequency( (float) 1 / ((float) 4 * std::sqrt(insqrt) ));
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {
+		float insqrt = ps.getHeight() / 200;
+		ps.setFrequency( (float) 1 / ((float) 4 * std::sqrt(insqrt) ));
+		ps.buildParticles();
+	});
 }
 
-int frequencyChange(int f)
+void frequencyChange(int f)
 {
-  systems[activePS].ps.setFrequency((float) f/10000);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {
+		ps.setFrequency((float) f/10000);
+		ps.buildParticles();
+	});
 }
 
-int zBaseChange(int zb)
+void zBaseChange(int zb)
 {
-	systems[activePS].ps.zBase = ((float) zb)/10000;
-	systems[activePS].ps.buildParticles();
-	return 0;
+	DoChange( [=](particleSystem &ps) {
+		ps.zBase = ((float) zb)/10000;
+		ps.buildParticles();
+	});
 }
 
-int phaseGChange(int pg)
+void phaseGChange(int pg)
 {
-  systems[activePS].ps.setPhaseGrouping((float) pg/10000);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {
+		ps.setPhaseGrouping((float) pg/10000);
+		ps.buildParticles();
+	});
 }
 
-int masterPhaseChange(int mp)
+void masterPhaseChange(int mp)
 {
-  systems[activePS].ps.setMasterPhase((float) mp / 10000);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {
+		ps.setMasterPhase((float) mp / 10000);
+		ps.buildParticles();
+	});
 }
 
-int xyPhaseChange(int p)
+void xyPhaseChange(int p)
 {
-  systems[activePS].ps.setXYPhase((float) p / 10000);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {
+		ps.setXYPhase((float) p / 10000);
+		ps.buildParticles();
+	});
+	
 }
 
-int zWaveChange(int i)
+void zWaveChange(int i)
 {
-  if (i==0) systems[activePS].ps.setZWaveform(0);
-  else if (i==1) systems[activePS].ps.setZWaveform(1);
-  else if (i==2) systems[activePS].ps.setZWaveform(2);
-  else if (i==3) systems[activePS].ps.setZWaveform(3);
-  else if (i==4) systems[activePS].ps.setZWaveform(4);
-  return 0;
+	DoChange( [=](particleSystem &ps) {
+		ps.setZWaveform(i);
+	});
+  
 }
 
-int xyWaveChange(int i)
+void xyWaveChange(int i)
 {
-  if (i==0) systems[activePS].ps.setXYWaveform(0);
-  else if (i==1) systems[activePS].ps.setXYWaveform(1);
-  else if (i==2) systems[activePS].ps.setXYWaveform(2);
-  else if (i==3) systems[activePS].ps.setXYWaveform(3);
-  else if (i==4) systems[activePS].ps.setXYWaveform(4);
-  return 0;
+	DoChange( [=](particleSystem &ps) {
+		ps.setXYWaveform(i);
+	});
+	
 }
 
-int radiusChange(int r)
+void radiusChange(int r)
 {
-  systems[activePS].ps.setRadius((float) r);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {
+		ps.setRadius((float) r);
+		ps.buildParticles();
+	});
+	
 }
 
-int radiusVarChange(int rv)
+void radiusVarChange(int rv)
 {
-  systems[activePS].ps.setRadiusVar((rv));
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {
+		ps.setRadiusVar((rv));
+		ps.buildParticles();
+	});
+	
 }
 
-int emitterXYChange(int e)
+void emitterXYChange(int e)
 {
-  systems[activePS].ps.setEmitterXY((float) e);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setEmitterXY((float) e);
+		ps.buildParticles();
+	});
+	
 }
 
-int angleGroupingChanged(int g)
+void angleGroupingChanged(int g)
 {
-  systems[activePS].ps.setAngleGrouping( (float) g / 10000 );
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setAngleGrouping( (float) g / 10000 );
+		ps.buildParticles();
+	});
+	
 }
 
-int rgb1Change(int v)
+void rgb1Change(int v)
 {
-  systems[activePS].ps.setRGB1((float)v/10000);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setRGB1((float)v/10000);
+		ps.buildParticles();
+	});
+	
 }
 
-int rgb2Change(int v)
+void rgb2Change(int v)
 {
-  systems[activePS].ps.setRGB2((float)v/10000);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setRGB2((float)v/10000);
+		ps.buildParticles();
+	});
+	
 }
 
-int alpha1Change(int v)
+void alpha1Change(int v)
 {
-  systems[activePS].ps.setAlpha1((float)v/10000);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setAlpha1((float)v/10000);
+		ps.buildParticles();
+	});
+	
 }
 
-int alpha2Change(int v)
+void alpha2Change(int v)
 {
-  systems[activePS].ps.setAlpha2((float)v/10000);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setAlpha2((float)v/10000);
+		ps.buildParticles();
+	});
+	
 }
 
-int rgbWaveChange(int i)
+void rgbWaveChange(int i)
 {
-  systems[activePS].ps.setRGBWave(i);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setRGBWave(i);
+		ps.buildParticles();
+	});
+	
 }
 
-int alphaWaveChange(int i)
+void alphaWaveChange(int i)
 {
-  systems[activePS].ps.setAlphaWave(i);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setAlphaWave(i);
+		ps.buildParticles();
+	});
+	
 }
 
-int srcBlendChange(int i)
+void srcBlendChange(int i)
 {
-  if (i==0) systems[activePS].ps.setSrcBlend(GL_ONE); 
-  if (i==1) systems[activePS].ps.setSrcBlend(GL_ZERO); 
-  if (i==2) systems[activePS].ps.setSrcBlend(GL_DST_COLOR); 
-  if (i==3) systems[activePS].ps.setSrcBlend(GL_ONE_MINUS_DST_COLOR); 
-  if (i==4) systems[activePS].ps.setSrcBlend(GL_SRC_ALPHA); 
-  if (i==5) systems[activePS].ps.setSrcBlend(GL_ONE_MINUS_SRC_ALPHA); 
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		if (i==0) ps.setSrcBlend(GL_ONE); 
+		if (i==1) ps.setSrcBlend(GL_ZERO); 
+		if (i==2) ps.setSrcBlend(GL_DST_COLOR); 
+		if (i==3) ps.setSrcBlend(GL_ONE_MINUS_DST_COLOR); 
+		if (i==4) ps.setSrcBlend(GL_SRC_ALPHA); 
+		if (i==5) ps.setSrcBlend(GL_ONE_MINUS_SRC_ALPHA); 
+	});
+	
 }
 
-int dstBlendChange(int i)
+void dstBlendChange(int i)
 {
-  if (i==0) systems[activePS].ps.setDstBlend(GL_ONE); 
-  if (i==1) systems[activePS].ps.setDstBlend(GL_ZERO); 
-  if (i==2) systems[activePS].ps.setDstBlend(GL_SRC_COLOR); 
-  if (i==3) systems[activePS].ps.setDstBlend(GL_ONE_MINUS_SRC_COLOR); 
-  if (i==4) systems[activePS].ps.setDstBlend(GL_SRC_ALPHA); 
-  if (i==5) systems[activePS].ps.setDstBlend(GL_ONE_MINUS_SRC_ALPHA); 
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		if (i==0) ps.setDstBlend(GL_ONE); 
+		if (i==1) ps.setDstBlend(GL_ZERO); 
+		if (i==2) ps.setDstBlend(GL_SRC_COLOR); 
+		if (i==3) ps.setDstBlend(GL_ONE_MINUS_SRC_COLOR); 
+		if (i==4) ps.setDstBlend(GL_SRC_ALPHA); 
+		if (i==5) ps.setDstBlend(GL_ONE_MINUS_SRC_ALPHA);  
+	});
+	
 }
 
-int rgbPhaseChange(int i)
+void rgbPhaseChange(int i)
 {
-  systems[activePS].ps.setRGBPhase((float)i/10000);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setRGBPhase((float)i/10000);
+		ps.buildParticles();
+	});
+	
 }
 
-int alphaPhaseChange(int i)
+void alphaPhaseChange(int i)
 {
-  systems[activePS].ps.setAlphaPhase((float)i/10000);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setAlphaPhase((float)i/10000);
+		ps.buildParticles();
+	});
+	
 }
 
-int rgbPhaseMatchXY()
+void rgbPhaseMatchXY()
 {
-  systems[activePS].ps.setRGBPhase(systems[activePS].ps.getXYPhase());
-  systems[activePS].ps.buildParticles();
-  return 0;
-  //update slider
-  //
+	DoChange( [=](particleSystem &ps) {	
+		ps.setRGBPhase(ps.getXYPhase());
+		ps.buildParticles();
+	});
+	
 }
 
-int alphaPhaseMatchXY()
+void alphaPhaseMatchXY()
 {
-  systems[activePS].ps.setAlphaPhase(systems[activePS].ps.getXYPhase());
-  systems[activePS].ps.buildParticles();
-  //update slider
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setAlphaPhase(ps.getXYPhase());
+		ps.buildParticles();
+	});
+	
 }
 
-int stretch1Change(int s)
+void stretch1Change(int s)
 {
-  systems[activePS].ps.setStretch1( ( (float) s ) / 10000);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setStretch1( ( (float) s ) / 10000);
+		ps.buildParticles();
+	});
+	
 }
 
-int stretch2Change(int s)
+void stretch2Change(int s)
 {
-  systems[activePS].ps.setStretch2(((float)s)/10000);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setStretch2(((float)s)/10000);
+		ps.buildParticles();
+	});
+	
 }
 
-int stretchWaveChange(int i)
+void stretchWaveChange(int i)
 {
-  systems[activePS].ps.setStretchWave(i);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setStretchWave(i);
+		ps.buildParticles();
+	});
+	
 }
 
-int stretchPhaseChange(int i)
+void stretchPhaseChange(int i)
 {
-  systems[activePS].ps.setStretchPhase(((float)i)/10000);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setStretchPhase(((float)i)/10000);
+		ps.buildParticles();
+	});
+	
 }
 
-int stretchPhaseMatchXY()
+void stretchPhaseMatchXY()
 {
-  systems[activePS].ps.setStretchPhase(systems[activePS].ps.getXYPhase());
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setStretchPhase(systems[activePS].ps.getXYPhase());
+		ps.buildParticles();
+	});
+	
 }
 
-int rotSpeedChange(int r)
+void rotSpeedChange(int r)
 {
-  systems[activePS].ps.setRotSpeed(r);
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setRotSpeed(r);
+		ps.buildParticles();
+	});
+	
 }
 
-int rotSpeedVarChange(int v)
+void rotSpeedVarChange(int v)
 {
-  systems[activePS].ps.setRotSpeedVar(v);
-  systems[activePS].ps.buildParticles();
-  return 0;
-}
-
-int PS1rXChange(int x)
-{
-	return systems[0].ps.rotx = x;
-}
-
-int PS1rYChange(int x)
-{
-	return systems[0].ps.roty = x;
-}
-
-int PS1rZChange(int x)
-{
-	return systems[0].ps.rotz = x;
-}
-
-int PS2rXChange(int x)
-{
-	return systems[1].ps.rotx = x;
-}
-
-int PS2rYChange(int x)
-{
-	return systems[1].ps.roty = x;
-}
-
-int PS2rZChange(int x)
-{
-	return systems[1].ps.rotz = x;
-}
-
-int PS3rXChange(int x)
-{
-	return systems[2].ps.rotx = x;
-}
-
-int PS3rYChange(int x)
-{
-	return systems[2].ps.roty = x;
-}
-
-int PS3rZChange(int x)
-{
-	return systems[2].ps.rotz = x;
-}
-
-int PS4rXChange(int x)
-{
-	return systems[3].ps.rotx = x;
-}
-
-int PS4rYChange(int x)
-{
-	return systems[3].ps.roty = x;
-}
-
-int PS4rZChange(int x)
-{
-	return systems[3].ps.rotz = x;
-}
-
-int PS1XChange(int x)
-{
-	return systems[0].x = x;
-}
-
-int PS2XChange(int x)
-{
-	return systems[1].x = x;
-}
-
-int PS3XChange(int x)
-{
-	return systems[2].x = x;
-}
-
-int PS4XChange(int x)
-{
-	return systems[3].x = x;
-}
-
-int PS1YChange(int y)
-{
-	return systems[0].y=y;
-}
-
-int PS2YChange(int y)
-{
-	return systems[1].y=y;
-}
-
-int PS3YChange(int y)
-{
-	return systems[2].y=y;
-}
-
-int PS4YChange(int y)
-{
-	return systems[3].y=y;
-}
-
-int PS1ZChange(int z)
-{
-	return systems[0].z=z;
-}
-
-int PS2ZChange(int z)
-{
-	return systems[1].z=z;
-}
-
-int PS3ZChange(int z)
-{
-	return systems[2].z=z;
-}
-
-int PS4ZChange(int z)
-{
-	return systems[3].z=z;
-}
-
-int sort1Change(int s)
-{
-	return systems[0].sort = s;
-}
-
-int sort2Change(int s)
-{
-	return systems[1].sort = s;
-}
-
-int sort3Change(int s)
-{
-	return systems[2].sort = s;
-}
-
-int sort4Change(int s)
-{
-	return systems[3].sort = s;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setRotSpeedVar(v);
+		ps.buildParticles();
+	});
+	
 }
 
 int numActiveSystems()
 {
 	int count = 0;
-	for (int i=0;i<4;i++)
+	for (int i=0;i<MAX_SYSTEMS;i++)
 	{
 		if (systems[i].active == true) count++;
 	}
 	return count;
 }
 
-/*
-
-pressed 3:
-
-if 3 is not active: make active and make current
-if 3 is active but not current: make current
-if 3 is active and current: turn off if numActiveSystems() > 1
-0.5 0.5 0.5 - grey
-0.5 0.5 0.7 - mid blue
-0.5 0.5 0.9 - lt blue
-*/
-
 void activeProcessor(int i)
 {
-	//if not active
+	//if not active	
+
 	if (systems[i].active == false)
 	{
 		systems[i].active = true;
 		swapSystems(i,activePS);
-		// change color of current active to mid blue 0.5 0.5 0.7
-		if (activePS==0)
-		{
-			BGLoad1.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);//Light Blue
-			BGLoad1.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_ACTIVE);//Light Blue
-			BGLoad1.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-		}
-		if (activePS==1)
-		{
-			BGLoad2.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);//Light Blue
-			BGLoad2.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_ACTIVE);//Light Blue
-			BGLoad2.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-		}
-		if (activePS==2)
-		{
-			BGLoad3.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);//Light Blue
-			BGLoad3.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_ACTIVE);//Light Blue
-			BGLoad3.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-		}
-		if (activePS==3)
-		{
-			BGLoad4.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);//Light Blue
-			BGLoad4.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_ACTIVE);//Light Blue
-			BGLoad4.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_HOVERACTIVE);//Light Blue
+
+		{			
+			buttons[activePS].setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);				//Light Blue
+			buttons[activePS].setColor(SYS_BUT_CURRENT,BUTTON_COLOR_ACTIVE);		//Light Blue
+			buttons[activePS].setColor(SYS_BUT_CURRENT,BUTTON_COLOR_HOVERACTIVE);	//Light Blue
 		}
 		activePS = i;
-		if (i==0) // Current
+
 		{
-			BGLoad1.setColor(SYS_BUT_CURRENT,BUTTON_COLOR);//Light Blue
-			BGLoad1.setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);//Light Blue
-			BGLoad1.setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-		}
-		if (i==1) 
-		{
-			BGLoad2.setColor(SYS_BUT_CURRENT,BUTTON_COLOR);//Light Blue
-			BGLoad2.setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);//Light Blue
-			BGLoad2.setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-		}
-		if (i==2) 
-		{
-			BGLoad3.setColor(SYS_BUT_CURRENT,BUTTON_COLOR);//Light Blue
-			BGLoad3.setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);//Light Blue
-			BGLoad3.setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-		}
-		if (i==3) 
-		{
-			BGLoad4.setColor(SYS_BUT_CURRENT,BUTTON_COLOR);//Light Blue
-			BGLoad4.setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);//Light Blue
-			BGLoad4.setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);//Light Blue
+			buttons[i].setColor(SYS_BUT_CURRENT,BUTTON_COLOR);				//Light Blue
+			buttons[i].setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);		//Light Blue
+			buttons[i].setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);	//Light Blue
 		}
 	}
 	else if (systems[i].active && (i!=activePS)) // active but not current
@@ -1290,150 +1142,92 @@ void activeProcessor(int i)
 		//set current
 		swapSystems(i,activePS);
 		//change current active button to mid grey (active, not current)
-		if (activePS==0)
 		{
-			BGLoad1.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);//Light Blue
-			BGLoad1.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_ACTIVE);//Light Blue
-			BGLoad1.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_HOVERACTIVE);//Light Blue
+			buttons[activePS].setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);				//Light Blue
+			buttons[activePS].setColor(SYS_BUT_CURRENT,BUTTON_COLOR_ACTIVE);		//Light Blue
+			buttons[activePS].setColor(SYS_BUT_CURRENT,BUTTON_COLOR_HOVERACTIVE);	//Light Blue
 		}
-		if (activePS==1)
+
+		activePS=i;		
 		{
-			BGLoad2.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);//Light Blue
-			BGLoad2.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_ACTIVE);//Light Blue
-			BGLoad2.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-		}
-		if (activePS==2)
-		{
-			BGLoad3.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);//Light Blue
-			BGLoad3.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_ACTIVE);//Light Blue
-			BGLoad3.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-		}
-		if (activePS==3)
-		{
-			BGLoad4.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);//Light Blue
-			BGLoad4.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_ACTIVE);//Light Blue
-			BGLoad4.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-		}
-		activePS=i;
-		if (activePS==0)
-		{
-			BGLoad1.setColor(SYS_BUT_CURRENT,BUTTON_COLOR);//Light Blue
-			BGLoad1.setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);//Light Blue
-			BGLoad1.setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-		}
-		if (activePS==1)
-		{
-			BGLoad2.setColor(SYS_BUT_CURRENT,BUTTON_COLOR);//Light Blue
-			BGLoad2.setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);//Light Blue
-			BGLoad2.setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-		}
-		if (activePS==2)
-		{
-			BGLoad3.setColor(SYS_BUT_CURRENT,BUTTON_COLOR);//Light Blue
-			BGLoad3.setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);//Light Blue
-			BGLoad3.setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-		}
-		if (activePS==3)
-		{
-			BGLoad4.setColor(SYS_BUT_CURRENT,BUTTON_COLOR);//Light Blue
-			BGLoad4.setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);//Light Blue
-			BGLoad4.setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);//Light Blue
+			buttons[activePS].setColor(SYS_BUT_CURRENT,BUTTON_COLOR);				//Light Blue
+			buttons[activePS].setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);		//Light Blue
+			buttons[activePS].setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);	//Light Blue
 		}
 
 	}
 	else // make current unactive and find a new current
 	{
-		if (numActiveSystems()>1)
+		if (numActiveSystems() > 1)
 		{
-			if (activePS==0)
 			{
-				BGLoad1.setColor(SYS_BUT_DISABLE,BUTTON_COLOR);//Light Blue
-				BGLoad1.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_ACTIVE);//Light Blue
-				BGLoad1.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-			}
-			if (activePS==1)
-			{
-				BGLoad2.setColor(SYS_BUT_DISABLE,BUTTON_COLOR);//Light Blue
-				BGLoad2.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_ACTIVE);//Light Blue
-				BGLoad2.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-			}
-			if (activePS==2)
-			{
-				BGLoad3.setColor(SYS_BUT_DISABLE,BUTTON_COLOR);//Light Blue
-				BGLoad3.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_ACTIVE);//Light Blue
-				BGLoad3.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-			}
-			if (activePS==3)
-			{
-				BGLoad4.setColor(SYS_BUT_DISABLE,BUTTON_COLOR);//Light Blue
-				BGLoad4.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_ACTIVE);//Light Blue
-				BGLoad4.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_HOVERACTIVE);//Light Blue
+				buttons[activePS].setColor(SYS_BUT_DISABLE,BUTTON_COLOR);				//Light Blue
+				buttons[activePS].setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_ACTIVE);		//Light Blue
+				buttons[activePS].setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_HOVERACTIVE);	//Light Blue
 			}
 			int oldPS = activePS;
 			systems[i].active = false;
 			
 			do {
-				activePS = (++activePS)%4;
+				activePS = (++activePS) % MAX_SYSTEMS;
 			} while (systems[activePS].active!=true);
 			swapSystems(activePS,oldPS);
-			if (activePS==0)
+			
 			{
-				BGLoad1.setColor(SYS_BUT_CURRENT,BUTTON_COLOR);//Light Blue
-				BGLoad1.setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);//Light Blue
-				BGLoad1.setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-			}
-			if (activePS==1)
-			{
-				BGLoad2.setColor(SYS_BUT_CURRENT,BUTTON_COLOR);//Light Blue
-				BGLoad2.setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);//Light Blue
-				BGLoad2.setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-			}
-			if (activePS==2)
-			{
-				BGLoad3.setColor(SYS_BUT_CURRENT,BUTTON_COLOR);//Light Blue
-				BGLoad3.setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);//Light Blue
-				BGLoad3.setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-			}
-			if (activePS==3)
-			{
-				BGLoad4.setColor(SYS_BUT_CURRENT,BUTTON_COLOR);//Light Blue
-				BGLoad4.setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);//Light Blue
-				BGLoad4.setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);//Light Blue
+				buttons[activePS].setColor(SYS_BUT_CURRENT,BUTTON_COLOR);				//Light Blue
+				buttons[activePS].setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);		//Light Blue
+				buttons[activePS].setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);	//Light Blue
 			}
 		}
 	}
 }
 
-int Active1Pressed()
+void Active1Pressed()
 {
 	// if activePS == 1: turn off and chage to another active system if numactivesystems>1
 	activeProcessor(0);
-	return 0;
 }
 
-int Active2Pressed()
+void Active2Pressed()
 {
 	activeProcessor(1);
-	return 0;
 }
 
-int Active3Pressed()
+void Active3Pressed()
 {
 	activeProcessor(2);
-	return 0;
 }
 
-int Active4Pressed()
+void Active4Pressed()
 {
 	activeProcessor(3);
-	return 0;
+}
+
+void Active5Pressed()
+{
+	activeProcessor(4);
+}
+
+void Active6Pressed()
+{
+	activeProcessor(5);
+}
+
+void Active7Pressed()
+{
+	activeProcessor(6);
+}
+
+void Active8Pressed()
+{
+	activeProcessor(7);
 }
 
 /*
 ----------------=====================================END OF ON-CHANGE CODE=============================--------------
 */
 
-int getTexture()
+void getTexture()
 {
   // if base path is found remove the base path from the beginning of the string
   // if the base path doesnt prefix the texturepath, then prompt the user with the message 'Please Select From Your Base Path'
@@ -1460,57 +1254,56 @@ int getTexture()
   ofn.Flags = OFN_NONETWORKBUTTON | OFN_READONLY | OFN_NOCHANGEDIR /*| OFN_ALLOWMULTISELECT*/;
   if (GetOpenFileName(&ofn) != 0)
   {
-    strLower(szFileName); // Lower Case
-    char *p=szFileName;   // Convert Slashes
-    while (*p) 
-    {
-      if (*p == '\\') *p = '/';
-      p++;
-    }
-    //std:: ofstream oFile("textureFind.txt",std::ios::app);
-    //oFile << foundBasePath << ' ' << basePath << ' ' << szFileName << '\n';
-    if (systems[0].foundBasePath)
-    {
-      // look for base path at beginning of string
-      // convert '\' to '/' in szFileName
+	strLower(szFileName); // Lower Case
+	char *p=szFileName;   // Convert Slashes
+	while (*p) 
+	{
+	  if (*p == '\\') *p = '/';
+	  p++;
+	}
+	//std:: ofstream oFile("textureFind.txt",std::ios::app);
+	//oFile << foundBasePath << ' ' << basePath << ' ' << szFileName << '\n';
+	if (systems[0].foundBasePath)
+	{
+	  // look for base path at beginning of string
+	  // convert '\' to '/' in szFileName
 
-      //MessageBox(hWnd, temp_base, "Error", MB_OK );
-      //MessageBox(hWnd, szFileName, "Error", MB_OK );
-      if (std::strncmp( temp_base , szFileName , std::strlen(systems[0].basePath) ) == 0)
-      {
-        std:strcpy(path, &szFileName[std::strlen(systems[0].basePath)]);
-        //MessageBox(hWnd, path, "Error", MB_OK );
-        systems[activePS].foundTexturePath = true;
-        std::strcpy(systems[activePS].texturePath,path);
-        std::strcpy(txtTextureName.string,path);
-      }
-      else
-      {
-        MessageBox(hWnd, "Select a texture from inside your base path!", "ERROR!", MB_OK );
-      }
-    }
-    else // Base path not set search for '/textures/'
-    {
-      char *p = std::strstr(szFileName,"/textures/");
-      if (p)
-      {
-        p++; // point to fist 't' in /textures/'
-        foundTexturePath = true;
-        std::strcpy(systems[activePS].texturePath,p);
-        std::strcpy(txtTextureName.string,p);
-      }
-      else 
-      {
-        MessageBox(hWnd, "Please set your base path first!", "ERROR!", MB_OK );
-      }
-    }
-    //oFile.close();
+	  //MessageBox(hWnd, temp_base, "Error", MB_OK );
+	  //MessageBox(hWnd, szFileName, "Error", MB_OK );
+	  if (std::strncmp( temp_base , szFileName , std::strlen(systems[0].basePath) ) == 0)
+	  {
+		std:strcpy(path, &szFileName[std::strlen(systems[0].basePath)]);
+		//MessageBox(hWnd, path, "Error", MB_OK );
+		systems[activePS].foundTexturePath = true;
+		std::strcpy(systems[activePS].texturePath,path);
+		std::strcpy(txtTextureName.string,path);
+	  }
+	  else
+	  {
+		MessageBox(hWnd, "Select a texture from inside your base path!", "ERROR!", MB_OK );
+	  }
+	}
+	else // Base path not set search for '/textures/'
+	{
+	  char *p = std::strstr(szFileName,"/textures/");
+	  if (p)
+	  {
+		p++; // point to fist 't' in /textures/'
+		foundTexturePath = true;
+		std::strcpy(systems[activePS].texturePath,p);
+		std::strcpy(txtTextureName.string,p);
+	  }
+	  else 
+	  {
+		MessageBox(hWnd, "Please set your base path first!", "ERROR!", MB_OK );
+	  }
+	}
+	//oFile.close();
   }
   textureNameBoxChanged(txtTextureName.string);
-  return 0;
 }
 
-int getBasePathDir()
+void getBasePathDir()
 {
   OPENFILENAME ofn;
   char szFileName[MAX_PATH];
@@ -1533,71 +1326,68 @@ int getBasePathDir()
   
    //MessageBox(hWnd, ofn.lpstrFile, "Error", MB_OK );
    
-    std::strncpy(path,szFileName,ofn.nFileOffset);
-    path[ofn.nFileOffset] = 0;
-    char *p=path;
-    while (*p)
-    {
-      if (*p == '\\') *p = '/';
-      p++;      
-    }
-    //MessageBox(hWnd, path, "Error", MB_OK );
-    strcpy(systems[0].basePath,path);
-    systems[0].foundBasePath = true;
-    strcpy(txtBasePath.string,path);
-    //after recieved chop off file name and set to base path.
-    // add null term
-    // convert \ to /
+	std::strncpy(path,szFileName,ofn.nFileOffset);
+	path[ofn.nFileOffset] = 0;
+	char *p=path;
+	while (*p)
+	{
+	  if (*p == '\\') *p = '/';
+	  p++;      
+	}
+	//MessageBox(hWnd, path, "Error", MB_OK );
+	strcpy(systems[0].basePath,path);
+	systems[0].foundBasePath = true;
+	strcpy(txtBasePath.string,path);
+	//after recieved chop off file name and set to base path.
+	// add null term
+	// convert \ to /
   }
    
    //SetCurrentDirectory(workingDir);
-  return 0;
 }
 
-int toggleFirework()
+void toggleFirework()
 {
   if ( systems[activePS].ps.getFireworkMode() == false)
   {
-    // turn on
-    firework.l_name.setString("Experimental Firework Mode: ON");
-    systems[activePS].ps.setFireworkMode(true);
+	// turn on
+	firework.l_name.setString("Experimental Firework Mode: ON");
+	systems[activePS].ps.setFireworkMode(true);
   }
   else
   {
-    //turn off
-    firework.l_name.setString("Experimental Firework Mode: OFF");
-    systems[activePS].ps.setFireworkMode(false);
+	//turn off
+	firework.l_name.setString("Experimental Firework Mode: OFF");
+	systems[activePS].ps.setFireworkMode(false);
   }
   systems[activePS].ps.buildParticles();
-  return 0;
 }
 
-int togglePlayerVis()
+void togglePlayerVis()
 {
   if (togglePlayer == 0)
   {
-    togglePlayer = 56;
-    butShowPlayer.l_name.setString("Player, 56u");
+	togglePlayer = 56;
+	butShowPlayer.l_name.setString("Player, 56u");
   }
   else if (togglePlayer == 56)
   {
-    togglePlayer = 64;
-    butShowPlayer.l_name.setString("Player, 64u");
+	togglePlayer = 64;
+	butShowPlayer.l_name.setString("Player, 64u");
   }
   else if (togglePlayer == 64)
   {
-    togglePlayer = 72;
-    butShowPlayer.l_name.setString("Player, 72u");
+	togglePlayer = 72;
+	butShowPlayer.l_name.setString("Player, 72u");
   }
-  else if (togglePlayer = 72)
+  else if (togglePlayer == 72)
   {
-    togglePlayer = 0;
-    butShowPlayer.l_name.setString("Show Player");
+	togglePlayer = 0;
+	butShowPlayer.l_name.setString("Show Player");
   }
-  return 0;
 }
 
-int colourPickerPressed()
+void colourPickerPressed()
 {
   //get bg_rgb values
   //convert to DWORD
@@ -1610,8 +1400,6 @@ int colourPickerPressed()
   
   CHOOSECOLOR cc;                 // common dialog box structure 
   static COLORREF acrCustClr[16]; // array of custom colors 
-  //HWND hwnd;                      // owner window
-  //HBRUSH hbrush;                  // brush handle
   static DWORD rgbCurrent;        // initial color selection
   
   rgbCurrent = 0;
@@ -1628,8 +1416,8 @@ int colourPickerPressed()
   cc.Flags = CC_FULLOPEN | CC_RGBINIT;
   
   if (ChooseColor(&cc)==TRUE) {
-    //hbrush = CreateSolidBrush(cc.rgbResult);
-    rgbCurrent = cc.rgbResult; 
+	//hbrush = CreateSolidBrush(cc.rgbResult);
+	rgbCurrent = cc.rgbResult; 
   }
   
   //char red,green,blue;
@@ -1641,24 +1429,37 @@ int colourPickerPressed()
   bgred = ((float)red) / 255;
   bggreen = ((float)green) / 255;
   bgblue = ((float)blue) / 255;
-  
-  //convert to normalized floats 
-  // set button colour?
-  
-  //ChooseColor(&cc);
-  //MessageBox(NULL, "TEST", "ERROR", MB_OK);
-  //std::ofstream cFile("colourhf76554.txt",std::ios::app);
-  //cFile << "Completed ColourPickerPressed\n";
-  //cFile.close();
-  return 0;
+}
+
+void toggleOnce()
+{
+	if(particleSystem::toggleOnce())
+		runOnce.l_name.setString("Once");
+	else
+		runOnce.l_name.setString("Continuous");
+}
+
+void toggleSeed()
+{
+	particleSystem::toggleFixedSeed();
+
+	if(particleSystem::getFixedSeed() == true)
+		lockSeed.l_name.setString("Seed Locked");
+	else
+		lockSeed.l_name.setString("Random Seed");
+
+	for (auto &s : systems)
+	{
+		s.ps.buildParticles(); // rebuild all systems, to reflect the change
+	}
 }
 
 void strLower(char *s)
 {
   while (*s)
   {
-    if ( ( *s > 64 ) && ( *s < 92 ) ) *s = *s | 32;
-    s++;
+	if ( ( *s > 64 ) && ( *s < 92 ) ) *s = *s | 32;
+	s++;
   }
 }
 
@@ -1842,8 +1643,8 @@ int runExport(tab *t)
 		  {
 			  return 0;
 		  }
-	    
-	    
+		
+		
 		// TRY AND OPEN EXPORT PATH	    
 		std::ofstream testExport(exportPath,std::ios::app);
 		if (testExport.is_open())
@@ -1911,7 +1712,7 @@ int runExport(tab *t)
 				  strLower(exportPath);
 				  
 				  //convert .jpg and .jpeg to .tga
-				       
+					   
 				  int length = std::strlen(exportTexturePath);
 				  if ((( exportTexturePath[length-1] | 32 ) == 'g' ) && (( exportTexturePath[length-2] | 32 ) == 'p' ) && (( exportTexturePath[length-3] | 32 ) == 'j' ) )
 				  {
@@ -2011,23 +1812,25 @@ int tabClicked(tab *t)
   if (currentTab) currentTab->setActive(false);
   int i = 0;
   baseEnt * ent;
-  while (ent = currentTab->getLinked(i))
-  {
-    entities.unbindEnt(ent);
-    i++;
-  }
+  if (currentTab)
+	  while (ent = currentTab->getLinked(i))
+	  {
+		entities.unbindEnt(ent);
+		i++;
+	  }
   // remove ents
   // set new active tab
-  currentTab=t;
-  currentTab->setActive(true);
+  currentTab=t;  
+  if (currentTab) currentTab->setActive(true);
   // add ents
   i=0;
   ent=0;
-  while (ent = currentTab->getLinked(i))
-  {
-    entities.bindEnt(ent);
-    i++;
-  }
+  if (currentTab) 
+	  while (ent = currentTab->getLinked(i))
+	  {
+		entities.bindEnt(ent);
+		i++;
+	  }
   return 0;
 }
 
@@ -2043,26 +1846,26 @@ bool shaderNameBoxChanged(char *str)
   char *p=str;
   while (*p)
   {
-    if (*p == 32) *p = '/';
-    if (*p == '/') count++;
-    p++;
+	if (*p == 32) *p = '/';
+	if (*p == '/') count++;
+	p++;
   }
   if (count == 1)    // only continue if count == 1
   {
-    if (*str == '/') 
-    {
-      systems[activePS].foundShaderName = false;
-      return false;  // check 1st char isnt '/'
-    }
-    p--;
-    if (*p == '/') 
-    {
-      systems[activePS].foundShaderName = false;
-      return false;  // check last char isnt '/'
-    }
-    systems[activePS].foundShaderName = true;
-    std::strcpy(systems[activePS].shaderName,str);
-    return true;
+	if (*str == '/') 
+	{
+	  systems[activePS].foundShaderName = false;
+	  return false;  // check 1st char isnt '/'
+	}
+	p--;
+	if (*p == '/') 
+	{
+	  systems[activePS].foundShaderName = false;
+	  return false;  // check last char isnt '/'
+	}
+	systems[activePS].foundShaderName = true;
+	std::strcpy(systems[activePS].shaderName,str);
+	return true;
   }
   //std::ofstream oFile("shaBox.txt",std::ios::app);
   //oFile <<str << "   " << count << '\n';
@@ -2087,13 +1890,13 @@ bool basePathBoxChanged(char *str)
   
   if ( (basePathStr[std::strlen(basePathStr)-1] != '/') && (basePathStr[std::strlen(basePathStr)-1] != '\\') )
   {
-    basePathStr[std::strlen(basePathStr)+1] = 0;
-    basePathStr[std::strlen(basePathStr)] = '/';
+	basePathStr[std::strlen(basePathStr)+1] = 0;
+	basePathStr[std::strlen(basePathStr)] = '/';
   }
   if (*str == 0) 
   {
-    basePathStr[0] = basePathStr[1] = 0;
-    systems[0].foundBasePath = false;
+	basePathStr[0] = basePathStr[1] = 0;
+	systems[0].foundBasePath = false;
   }
   else systems[0].foundBasePath = true;
   
@@ -2112,64 +1915,64 @@ bool textureNameBoxChanged(char *str)
   // Try and find texture if base path is found.
   if (systems[0].foundBasePath)
   {
-    //std::ofstream oFile("textureName.txt",std::ios::app);
-    //oFile << basePath << " + " << str << '\n';
-    char pathString[1025];
-    std::strcpy(pathString,systems[0].basePath);
-    std::strcat(pathString,str);
-    if ((pathString[std::strlen(pathString)-1]=='L') && (pathString[std::strlen(pathString)-2]=='U') && (pathString[std::strlen(pathString)-3]=='N')) return false;
-    //oFile << pathString << '\n';
-    // if lst 3 chars are "NUL" instantly return false
-    std::ifstream tryFile(pathString,std::ios::binary);
-    if (tryFile.is_open())
-    {
-      tryFile.close();
-      
-      int length = std::strlen(pathString);
-      
-      if (
-      (( pathString[length-1] | 32 ) == 'a' ) && 
-      (( pathString[length-2] | 32 ) == 'g' ) &&  
-      (( pathString[length-3] | 32 ) == 't' ) )
-      {
-        if (LoadTGA(&systems[activePS].texture, pathString))
-        {
-          status = true;
-        
-          glGenTextures(1, &systems[activePS].texture.texID);				// Create The Texture ( CHANGE )
-  			  glBindTexture(GL_TEXTURE_2D, systems[activePS].texture.texID);
-  			  if (systems[activePS].texture.bpp == 24) glTexImage2D(GL_TEXTURE_2D, 0, 3, systems[activePS].texture.width, systems[activePS].texture.height, 0, GL_RGB, GL_UNSIGNED_BYTE, systems[activePS].texture.imageData);
-  			  else glTexImage2D(GL_TEXTURE_2D, 0, 4, systems[activePS].texture.width, systems[activePS].texture.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, systems[activePS].texture.imageData);
-  			  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-  			  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+	//std::ofstream oFile("textureName.txt",std::ios::app);
+	//oFile << basePath << " + " << str << '\n';
+	char pathString[1025];
+	std::strcpy(pathString,systems[0].basePath);
+	std::strcat(pathString,str);
+	if ((pathString[std::strlen(pathString)-1]=='L') && (pathString[std::strlen(pathString)-2]=='U') && (pathString[std::strlen(pathString)-3]=='N')) return false;
+	//oFile << pathString << '\n';
+	// if lst 3 chars are "NUL" instantly return false
+	std::ifstream tryFile(pathString,std::ios::binary);
+	if (tryFile.is_open())
+	{
+	  tryFile.close();
+	  
+	  int length = std::strlen(pathString);
+	  
+	  if (
+	  (( pathString[length-1] | 32 ) == 'a' ) && 
+	  (( pathString[length-2] | 32 ) == 'g' ) &&  
+	  (( pathString[length-3] | 32 ) == 't' ) )
+	  {
+		if (LoadTGA(&systems[activePS].texture, pathString))
+		{
+		  status = true;
+		
+		  glGenTextures(1, &systems[activePS].texture.texID);				// Create The Texture ( CHANGE )
+			  glBindTexture(GL_TEXTURE_2D, systems[activePS].texture.texID);
+			  if (systems[activePS].texture.bpp == 24) glTexImage2D(GL_TEXTURE_2D, 0, 3, systems[activePS].texture.width, systems[activePS].texture.height, 0, GL_RGB, GL_UNSIGNED_BYTE, systems[activePS].texture.imageData);
+			  else glTexImage2D(GL_TEXTURE_2D, 0, 4, systems[activePS].texture.width, systems[activePS].texture.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, systems[activePS].texture.imageData);
+			  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+			  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
   
-  			  if (systems[activePS].texture.imageData)						// If Texture Image Exists ( CHANGE )
-  			  {
-  				  free(systems[activePS].texture.imageData);					// Free The Texture Image Memory ( CHANGE )
-  			  }
-  			  
-  			  //std::strcpy(ps.textureName,pathString);
-          
-        }
-      }
-      else if (
-      (( pathString[length-1] | 32 ) == 'g' ) && 
-      (( pathString[length-2] | 32 ) == 'p' ) &&  
-      (( pathString[length-3] | 32 ) == 'j' ) )
-      {
-        // Its a jpg
-        if (BuildTexture(pathString,systems[activePS].texture.texID)) status = true;
-      }
-      else if (
-      (( pathString[length-1] | 32 ) == 'g' ) && 
-      (( pathString[length-2] | 32 ) == 'e' ) &&  
-      (( pathString[length-3] | 32 ) == 'p' ) &&  
-      (( pathString[length-4] | 32 ) == 'j' ) )
-      {
-        // Its a jpg
-        if (BuildTexture(pathString,systems[activePS].texture.texID)) status = true;
-      }
-    }
+			  if (systems[activePS].texture.imageData)						// If Texture Image Exists ( CHANGE )
+			  {
+				  free(systems[activePS].texture.imageData);					// Free The Texture Image Memory ( CHANGE )
+			  }
+			  
+			  //std::strcpy(ps.textureName,pathString);
+		  
+		}
+	  }
+	  else if (
+	  (( pathString[length-1] | 32 ) == 'g' ) && 
+	  (( pathString[length-2] | 32 ) == 'p' ) &&  
+	  (( pathString[length-3] | 32 ) == 'j' ) )
+	  {
+		// Its a jpg
+		if (BuildTexture(pathString,systems[activePS].texture.texID)) status = true;
+	  }
+	  else if (
+	  (( pathString[length-1] | 32 ) == 'g' ) && 
+	  (( pathString[length-2] | 32 ) == 'e' ) &&  
+	  (( pathString[length-3] | 32 ) == 'p' ) &&  
+	  (( pathString[length-4] | 32 ) == 'j' ) )
+	  {
+		// Its a jpg
+		if (BuildTexture(pathString,systems[activePS].texture.texID)) status = true;
+	  }
+	}
   }
   
   if (systems[activePS].texturePath[0] == 0) systems[activePS].foundTexturePath = false;
@@ -2185,15 +1988,15 @@ void setDefaultTexture(Texture &t)
   unsigned int px_b = 255;
   
   unsigned int data[64] = {
-                              255,  ~0,  ~0,  ~0,  ~0,  ~0,  ~0,  255,
-                              ~0,  255,  ~0,  ~0,  ~0,  ~0,  255,  ~0,
-                              ~0,  ~0,  255,  ~0,  ~0,  255,  ~0,  ~0,
-                              ~0,  ~0,  ~0,  255,  255,  ~0,  ~0,  ~0,
-                              ~0,  ~0,  ~0,  255,  255,  ~0,  ~0,  ~0,
-                              ~0,  ~0,  255,  ~0,  ~0,  255,  ~0,  ~0,
-                              ~0,  255,  ~0,  ~0,  ~0,  ~0,  255,  ~0,
-                              255,  ~0,  ~0,  ~0,  ~0,  ~0,  ~0,  255
-                          };
+							  255,  ~0,  ~0,  ~0,  ~0,  ~0,  ~0,  255,
+							  ~0,  255,  ~0,  ~0,  ~0,  ~0,  255,  ~0,
+							  ~0,  ~0,  255,  ~0,  ~0,  255,  ~0,  ~0,
+							  ~0,  ~0,  ~0,  255,  255,  ~0,  ~0,  ~0,
+							  ~0,  ~0,  ~0,  255,  255,  ~0,  ~0,  ~0,
+							  ~0,  ~0,  255,  ~0,  ~0,  255,  ~0,  ~0,
+							  ~0,  255,  ~0,  ~0,  ~0,  ~0,  255,  ~0,
+							  255,  ~0,  ~0,  ~0,  ~0,  ~0,  ~0,  255
+						  };
   
   t.width  = 8;
   t.height = 8;
@@ -2216,36 +2019,41 @@ int loadGLTextures()											// Load Bitmaps And Convert To Textures
 
 
 	// Default Particle Texture
-	if (!LoadTGA(&systems[0].texture, "Data/def_sprite.tga")) setDefaultTexture(systems[0].texture);
+	for(int i=0;i<MAX_SYSTEMS;i++)
+	{
+		if (!LoadTGA(&systems[i].texture, "Data/def_sprite.tga")) setDefaultTexture(systems[i].texture);
+	}
+
+	/*if (!LoadTGA(&systems[0].texture, "Data/def_sprite.tga")) setDefaultTexture(systems[0].texture);
 	if (!LoadTGA(&systems[1].texture, "Data/def_sprite.tga")) setDefaultTexture(systems[1].texture);
 	if (!LoadTGA(&systems[2].texture, "Data/def_sprite.tga")) setDefaultTexture(systems[2].texture);
-	if (!LoadTGA(&systems[3].texture, "Data/def_sprite.tga")) setDefaultTexture(systems[3].texture);
+	if (!LoadTGA(&systems[3].texture, "Data/def_sprite.tga")) setDefaultTexture(systems[3].texture);*/
 
 	// Text Image
 	if (!LoadTGA(&texture[0], "Data/text.tga")) setDefaultTexture(texture[0]); 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 	
 	//{
-		Status=TRUE;											// Set The Status To TRUE
+	Status=TRUE;											// Set The Status To TRUE
 
-		for (int loop=0; loop<4; loop++)						// Loop Through Both Textures
+	for (int loop=0; loop<MAX_SYSTEMS; loop++)						// Loop Through Both Textures
+	{
+		// Typical Texture Generation Using Data From The TGA ( CHANGE )
+		glGenTextures(1, &systems[loop].texture.texID);				// Create The Texture ( CHANGE )
+		glBindTexture(GL_TEXTURE_2D, systems[loop].texture.texID);
+		if (systems[loop].texture.bpp == 24) glTexImage2D(GL_TEXTURE_2D, 0, 3, systems[loop].texture.width, systems[loop].texture.height, 0, GL_RGB, GL_UNSIGNED_BYTE, systems[loop].texture.imageData);
+		else glTexImage2D(GL_TEXTURE_2D, 0, 4, systems[loop].texture.width, systems[loop].texture.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, systems[loop].texture.imageData);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+
+
+		if (systems[loop].texture.imageData)						// If Texture Image Exists ( CHANGE )
 		{
-			// Typical Texture Generation Using Data From The TGA ( CHANGE )
-			glGenTextures(1, &systems[loop].texture.texID);				// Create The Texture ( CHANGE )
-			glBindTexture(GL_TEXTURE_2D, systems[loop].texture.texID);
-			if (systems[loop].texture.bpp == 24) glTexImage2D(GL_TEXTURE_2D, 0, 3, systems[loop].texture.width, systems[loop].texture.height, 0, GL_RGB, GL_UNSIGNED_BYTE, systems[loop].texture.imageData);
-			else glTexImage2D(GL_TEXTURE_2D, 0, 4, systems[loop].texture.width, systems[loop].texture.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, systems[loop].texture.imageData);
-			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-
-
-			if (systems[loop].texture.imageData)						// If Texture Image Exists ( CHANGE )
-			{
-				free(systems[loop].texture.imageData);					// Free The Texture Image Memory ( CHANGE )
-				systems[loop].texture.imageData = NULL;
-			}
+			free(systems[loop].texture.imageData);					// Free The Texture Image Memory ( CHANGE )
+			systems[loop].texture.imageData = NULL;
 		}
+	}
 	//}
 
 
@@ -2266,20 +2074,20 @@ int loadGLTextures()											// Load Bitmaps And Convert To Textures
 	return Status;												// Return The Status
 }
 
-int startAngleChange(int a)
+void startAngleChange(int a)
 {
-  systems[activePS].ps.setStartAngle(a);
-  sliderEndAngle.setValue_nochange(systems[activePS].ps.getEndAngle());
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setStartAngle(a);
+		ps.buildParticles();
+	});
 }
 
-int endAngleChange(int a)
+void endAngleChange(int a)
 {
-  systems[activePS].ps.setEndAngle(a);
-  sliderStartAngle.setValue_nochange(systems[activePS].ps.getStartAngle());
-  systems[activePS].ps.buildParticles();
-  return 0;
+	DoChange( [=](particleSystem &ps) {	
+		ps.setEndAngle(a);
+		ps.buildParticles();
+	});
 }
 
 bool loadDefaultsFromFile()
@@ -2287,15 +2095,15 @@ bool loadDefaultsFromFile()
   std::ifstream iFile("data/def.dat",std::ios::in);
   if (iFile.is_open())
   {
-    char buffer[MAX_PATH];
-    iFile.getline(buffer,MAX_PATH);
-    if (iFile.fail()) return false;
-    std::strcpy(txtBasePath.string,buffer);
+	char buffer[MAX_PATH];
+	iFile.getline(buffer,MAX_PATH);
+	if (iFile.fail()) return false;
+	std::strcpy(txtBasePath.string,buffer);
 
-	for (int i=0;i<4;i++)
+	for (int i=0;i<MAX_SYSTEMS;i++)
 	{
-		std::strcpy(systems[activePS].basePath,buffer);
-		systems[activePS].foundBasePath = true;
+		std::strcpy(systems[i].basePath,buffer);
+		systems[i].foundBasePath = true;
 	}
   }
   else return false;
@@ -2307,7 +2115,7 @@ bool saveDefaultsToFile()
   std::ofstream oFile("data/def.dat",std::ios::out);
   if (oFile.is_open())
   {
-    oFile << systems[0].basePath << '\n';
+	oFile << systems[0].basePath << '\n';
 	oFile.close();
   }
   else return false;
@@ -2322,78 +2130,76 @@ bool saveStateToFile(char *filename,std::ofstream &oFile)
   //std::ofstream oFile(filename,std::ios::out | std::ios::binary);
   if (oFile.is_open())
   {
-    oFile.write( (const char*) txtBasePath.string, sizeof(txtBasePath.string) );
-    oFile.write( (const char*) txtTextureName.string, sizeof(txtTextureName.string) );
-    oFile.write( (const char*) &txtShaderName.string, sizeof(txtShaderName.string) );
-    
-    oFile.write( (const char*) &sliderStartAngle.value, sizeof(int) );
-    oFile.write( (const char*) &sliderEndAngle.value, sizeof(int) );
-    
-    oFile.write( (const char*) &slider1.value, sizeof(int) );
-    oFile.write( (const char*) &slider2.value, sizeof(int) );
-    oFile.write( (const char*) &sliderZoom.value, sizeof(int) );
-    oFile.write( (const char*) &sliderNP.value, sizeof(int) );
-    oFile.write( (const char*) &sliderPSize.value, sizeof(int) );
-    oFile.write( (const char*) &sliderHeight.value, sizeof(int) );
-    oFile.write( (const char*) &sliderHeightVar.value, sizeof(int) );
-    oFile.write( (const char*) &sliderEmitterZ.value, sizeof(int) );
-    oFile.write( (const char*) &sliderFreq.value, sizeof(int) );
-    oFile.write( (const char*) &sliderPG.value, sizeof(int) );
-    oFile.write( (const char*) &sliderMasterPhase.value, sizeof(int) );
-    oFile.write( (const char*) &listZWave.selectedItem, sizeof(int) );
-    oFile.write( (const char*) &sliderRadius.value, sizeof(int) );
-    oFile.write( (const char*) &sliderRadiusVar.value, sizeof(int) );
-    oFile.write( (const char*) &sliderEmitterXY.value, sizeof(int) );
-    oFile.write( (const char*) &sliderAngleGrouping.value, sizeof(int) );
-    oFile.write( (const char*) &listXYWave.selectedItem, sizeof(int) );
-    oFile.write( (const char*) &sliderXYPhase.value, sizeof(int) );
-    oFile.write( (const char*) &sliderRGB1.value, sizeof(int) );
-    oFile.write( (const char*) &sliderRGB2.value, sizeof(int) );
-    oFile.write( (const char*) &listRGBWave.selectedItem, sizeof(int) );
-    oFile.write( (const char*) &sliderRGBPhase.value, sizeof(int) );
-    oFile.write( (const char*) &sliderAlpha1.value, sizeof(int) );
-    oFile.write( (const char*) &sliderAlpha2.value, sizeof(int) );
-    oFile.write( (const char*) &listAlphaWave.selectedItem, sizeof(int) );
-    oFile.write( (const char*) &sliderAlphaPhase.value, sizeof(int) );
-    oFile.write( (const char*) &listSrcBlend.selectedItem, sizeof(int) );
-    oFile.write( (const char*) &listDstBlend.selectedItem, sizeof(int) );
-    oFile.write( (const char*) &sliderStretch1.value, sizeof(int) );
-    oFile.write( (const char*) &sliderStretch2.value, sizeof(int) );
-    oFile.write( (const char*) &listStretchWave.selectedItem, sizeof(int) );
-    oFile.write( (const char*) &sliderStretchPhase.value, sizeof(int) );
-    oFile.write( (const char*) &sliderRotSpeed.value, sizeof(int) );
-    oFile.write( (const char*) &sliderRotSpeedVar.value, sizeof(int) );
-    oFile.write( (const char*) &bgred, sizeof(float) );
-    oFile.write( (const char*) &bggreen, sizeof(float) );
-    oFile.write( (const char*) &bgblue, sizeof(float) );
-    bool fire = systems[activePS].ps.getFireworkMode();
-    oFile.write( (const char*) &fire, sizeof(bool) );
+	oFile.write( (const char*) txtBasePath.string, sizeof(txtBasePath.string) );
+	oFile.write( (const char*) txtTextureName.string, sizeof(txtTextureName.string) );
+	oFile.write( (const char*) &txtShaderName.string, sizeof(txtShaderName.string) );
+	
+	oFile.write( (const char*) &sliderStartAngle.value, sizeof(int) );
+	oFile.write( (const char*) &sliderEndAngle.value, sizeof(int) );
+	
+	oFile.write( (const char*) &slider1.value, sizeof(int) );
+	oFile.write( (const char*) &slider2.value, sizeof(int) );
+	oFile.write( (const char*) &sliderZoom.value, sizeof(int) );
+	oFile.write( (const char*) &sliderNP.value, sizeof(int) );
+	oFile.write( (const char*) &sliderPSize.value, sizeof(int) );
+	oFile.write( (const char*) &sliderHeight.value, sizeof(int) );
+	oFile.write( (const char*) &sliderHeightVar.value, sizeof(int) );
+	oFile.write( (const char*) &sliderEmitterZ.value, sizeof(int) );
+	oFile.write( (const char*) &sliderFreq.value, sizeof(int) );
+	oFile.write( (const char*) &sliderPG.value, sizeof(int) );
+	oFile.write( (const char*) &sliderMasterPhase.value, sizeof(int) );
+	oFile.write( (const char*) &listZWave.selectedItem, sizeof(int) );
+	oFile.write( (const char*) &sliderRadius.value, sizeof(int) );
+	oFile.write( (const char*) &sliderRadiusVar.value, sizeof(int) );
+	oFile.write( (const char*) &sliderEmitterXY.value, sizeof(int) );
+	oFile.write( (const char*) &sliderAngleGrouping.value, sizeof(int) );
+	oFile.write( (const char*) &listXYWave.selectedItem, sizeof(int) );
+	oFile.write( (const char*) &sliderXYPhase.value, sizeof(int) );
+	oFile.write( (const char*) &sliderRGB1.value, sizeof(int) );
+	oFile.write( (const char*) &sliderRGB2.value, sizeof(int) );
+	oFile.write( (const char*) &listRGBWave.selectedItem, sizeof(int) );
+	oFile.write( (const char*) &sliderRGBPhase.value, sizeof(int) );
+	oFile.write( (const char*) &sliderAlpha1.value, sizeof(int) );
+	oFile.write( (const char*) &sliderAlpha2.value, sizeof(int) );
+	oFile.write( (const char*) &listAlphaWave.selectedItem, sizeof(int) );
+	oFile.write( (const char*) &sliderAlphaPhase.value, sizeof(int) );
+	oFile.write( (const char*) &listSrcBlend.selectedItem, sizeof(int) );
+	oFile.write( (const char*) &listDstBlend.selectedItem, sizeof(int) );
+	oFile.write( (const char*) &sliderStretch1.value, sizeof(int) );
+	oFile.write( (const char*) &sliderStretch2.value, sizeof(int) );
+	oFile.write( (const char*) &listStretchWave.selectedItem, sizeof(int) );
+	oFile.write( (const char*) &sliderStretchPhase.value, sizeof(int) );
+	oFile.write( (const char*) &sliderRotSpeed.value, sizeof(int) );
+	oFile.write( (const char*) &sliderRotSpeedVar.value, sizeof(int) );
+	oFile.write( (const char*) &bgred, sizeof(float) );
+	oFile.write( (const char*) &bggreen, sizeof(float) );
+	oFile.write( (const char*) &bgblue, sizeof(float) );
+	bool fire = systems[activePS].ps.getFireworkMode();
+	oFile.write( (const char*) &fire, sizeof(bool) );
 	oFile.write( (const char*) &sliderZBase.value, sizeof(int));
-    //oFile.close();
-    
+	//oFile.close();
+	
 	horizSlider* rotx[MAX_SYSTEMS];
 	horizSlider* roty[MAX_SYSTEMS];
-	horizSlider* rotz[MAX_SYSTEMS];
-	rotx[0] = &BGrx1;	rotx[1] = &BGrx2;	rotx[2] = &BGrx3;
-	rotx[3] = &BGrx4;	roty[0] = &BGry1;	roty[1] = &BGry2;
-	roty[2] = &BGry3;	roty[3] = &BGry4;	rotz[0] = &BGrz1;
-	rotz[1] = &BGrz2;	rotz[2] = &BGrz3;	rotz[3] = &BGrz4;
+	horizSlider* rotz[MAX_SYSTEMS];/*
+	rotx[0] = &BGrx1;	rotx[1] = &BGrx2;	rotx[2] = &BGrx3;	rotx[3] = &BGrx4;	
+	roty[0] = &BGry1;	roty[1] = &BGry2;	roty[2] = &BGry3;	roty[3] = &BGry4;	
+	rotz[0] = &BGrz1;	rotz[1] = &BGrz2;	rotz[2] = &BGrz3;	rotz[3] = &BGrz4;*/
 
-	oFile.write( (const char*) &(rotx[activePS]->value), sizeof(int));
-	oFile.write( (const char*) &(roty[activePS]->value), sizeof(int));
-	oFile.write( (const char*) &(rotz[activePS]->value), sizeof(int));
-
+	oFile.write( (const char*) &(rotXs[activePS].value), sizeof(int));
+	oFile.write( (const char*) &(rotXs[activePS].value), sizeof(int));
+	oFile.write( (const char*) &(rotXs[activePS].value), sizeof(int));
 
 
-    return true;
-    
+
+	return true;
+	
   }
   else return false;
-    
+	
 }
 
-
-int openBGPSPannel()
+void openBGPSPannel()
 {
 	// Open the Side Pannel
 	// Set Pannel to Active 
@@ -2401,7 +2207,7 @@ int openBGPSPannel()
 
 	BGPannel.active = true;
 
-	for (int i=0;i<128;i++)
+	for (int i=0;i<sidePannel::MaxEnts;i++)
 	{
 		if (BGPannel.boundEnts[i] != 0)
 			entities.bindEnt(BGPannel.boundEnts[i]);
@@ -2410,8 +2216,6 @@ int openBGPSPannel()
 	//entities.unbindEnt(&butBGPS);
 	hideSidePannelBut = true;
 	butBGPS.renderable = false;
-
-	return 0;
 }
 
 int closeBGPSPannel() // Occurs when mouse is clicked outside of the pannel
@@ -2421,7 +2225,7 @@ int closeBGPSPannel() // Occurs when mouse is clicked outside of the pannel
 
 	BGPannel.active = false;
 
-	for (int i=0;i<128;i++)
+	for (int i=0;i<sidePannel::MaxEnts;i++)
 	{
 		if (BGPannel.boundEnts[i] != 0)
 			entities.unbindEnt(BGPannel.boundEnts[i]);
@@ -2482,7 +2286,7 @@ int pannelLoad(int index) // Particel System Index
   return 0;
 }
 
-int saveAllSettings()
+void saveAllSettings()
 {
   OPENFILENAME ofn;
   char szFileName[MAX_PATH];
@@ -2503,12 +2307,12 @@ int saveAllSettings()
   
   if (GetSaveFileName(&ofn) != 0)
   {
-    bool exists = false;
+	bool exists = false;
 	std::ifstream testFile(szFileName);
 	if (testFile.is_open()) 
 	{
 		exists = true;
-		if (MessageBox(NULL,"Overwrite File?","Save",MB_YESNO|MB_ICONQUESTION) == IDNO) return 0;
+		if (MessageBox(NULL,"Overwrite File?","Save",MB_YESNO|MB_ICONQUESTION) == IDNO) return;
 	}
 
 	std::ofstream oFile(szFileName,std::ios::out|std::ios::binary);
@@ -2531,11 +2335,10 @@ int saveAllSettings()
 	activePS = activeHold;
 	swapSystems(activePS,activePS);
 
-  }
-  return 0;  
+  } 
 }
 
-int saveSettings()
+void saveSettings()
 {
   OPENFILENAME ofn;
   char szFileName[MAX_PATH];
@@ -2556,23 +2359,22 @@ int saveSettings()
   
   if (GetSaveFileName(&ofn) != 0)
   {
-    bool exists = false;
+	bool exists = false;
 	std::ifstream testFile(szFileName);
 	if (testFile.is_open()) 
 	{
 		exists = true;
-		if (MessageBox(NULL,"Overwrite File?","Save",MB_YESNO|MB_ICONQUESTION) == IDNO) return 0;
+		if (MessageBox(NULL,"Overwrite File?","Save",MB_YESNO|MB_ICONQUESTION) == IDNO) return;
 	}
 
 
 	std::ofstream oFile(szFileName,std::ios::out|std::ios::binary);
-    if (saveStateToFile(szFileName,oFile)) status = true;
-    else status = false;
+	if (saveStateToFile(szFileName,oFile)) status = true;
+	else status = false;
 	if (oFile.is_open()) oFile.close();
-    if (status) MessageBox(NULL, "Save Sucessfull", "Saving...", MB_OK);
-    else MessageBox(NULL, "Error During Save", "Saving...", MB_OK);
-  }
-  return 0;  
+	if (status) MessageBox(NULL, "Save Sucessfull", "Saving...", MB_OK);
+	else MessageBox(NULL, "Error During Save", "Saving...", MB_OK);
+  }  
 }
 
 bool loadStateFromFile(char *filename, particleSystem &ps,std::ifstream &iFile)
@@ -2580,481 +2382,481 @@ bool loadStateFromFile(char *filename, particleSystem &ps,std::ifstream &iFile)
   //std::ifstream iFile(filename, std::ios::out | std::ios::binary);
   if (iFile.is_open())
   {
-    
-    char buffer[512];
-    int value;
-    bool status = true;
-    
-    
-    //iFile.seekg(0,std::ios::beg);
-    
-    iFile.read( buffer, sizeof(txtBasePath.string) );
-    if (!iFile.eof() ) // not reached end of file
-    { 
-      std::strncpy(txtBasePath.string,buffer,512);
-      if (buffer[0] != 0) foundBasePath = true;
-      else foundBasePath = false;
-    }
-    else status = false; // Error reding from File
-    
-    
-    if (status) //next
-    {
-      iFile.read( buffer, sizeof(txtTextureName.string) );
-      if (!iFile.eof() )
-      {
-        std::strncpy(txtTextureName.string,buffer,512);
-        textureNameBoxChanged(buffer);
-        if (buffer[0] != 0) foundTexturePath = true;
-        else foundTexturePath = false;
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) buffer , sizeof(txtShaderName.string) );
-      if (!iFile.eof() )
-      {
-        std::strncpy(txtShaderName.string,buffer,512);
-        shaderNameBoxChanged(buffer);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderStartAngle.setValue_nochange(value);
-        systems[activePS].ps.setStartAngle(value);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderEndAngle.setValue_nochange(value);
-        systems[activePS].ps.setEndAngle(value);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        slider1.setValue_nochange(value);
-      }
-      else status = false;
-    }
+	
+	char buffer[512];
+	int value;
+	bool status = true;
+	
+	
+	//iFile.seekg(0,std::ios::beg);
+	
+	iFile.read( buffer, sizeof(txtBasePath.string) );
+	if (!iFile.eof() ) // not reached end of file
+	{ 
+	  std::strncpy(txtBasePath.string,buffer,512);
+	  if (buffer[0] != 0) foundBasePath = true;
+	  else foundBasePath = false;
+	}
+	else status = false; // Error reding from File
+	
+	
+	if (status) //next
+	{
+	  iFile.read( buffer, sizeof(txtTextureName.string) );
+	  if (!iFile.eof() )
+	  {
+		std::strncpy(txtTextureName.string,buffer,512);
+		textureNameBoxChanged(buffer);
+		if (buffer[0] != 0) foundTexturePath = true;
+		else foundTexturePath = false;
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) buffer , sizeof(txtShaderName.string) );
+	  if (!iFile.eof() )
+	  {
+		std::strncpy(txtShaderName.string,buffer,512);
+		shaderNameBoxChanged(buffer);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderStartAngle.setValue_nochange(value);
+		systems[activePS].ps.setStartAngle(value);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderEndAngle.setValue_nochange(value);
+		systems[activePS].ps.setEndAngle(value);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		slider1.setValue_nochange(value);
+	  }
+	  else status = false;
+	}
 
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        slider2.setValue_nochange(value);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderZoom.setValue_nochange(value);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderNP.setValue_nochange(value);
-        systems[activePS].ps.numParticles = value;
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderPSize.setValue_nochange(value);
-        systems[activePS].ps.setSize((float)value);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderHeight.setValue_nochange(value);
-        systems[activePS].ps.setHeight((float)value);
-      }
-      else status = false;
-    }    
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderHeightVar.setValue_nochange(value);
-        systems[activePS].ps.setHeightVar(value);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderEmitterZ.setValue_nochange(value);
-        systems[activePS].ps.setEmitterZ((float) value);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderFreq.setValue_nochange(value);
-        systems[activePS].ps.setFrequency(((float) value) / 10000);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderPG.setValue_nochange(value);
-        systems[activePS].ps.setPhaseGrouping(((float)value)/10000);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderMasterPhase.setValue_nochange(value);
-        systems[activePS].ps.setMasterPhase(((float) value )/10000);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        listZWave.setSelected(value);
-        systems[activePS].ps.setZWaveform(value);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderRadius.setValue_nochange(value);
-        systems[activePS].ps.setRadius(value);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderRadiusVar.setValue_nochange(value);
-        systems[activePS].ps.setRadiusVar(value);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderEmitterXY.setValue_nochange(value);
-        systems[activePS].ps.setEmitterXY(value);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderAngleGrouping.setValue_nochange(value);
-        systems[activePS].ps.setAngleGrouping(((float)value)/10000);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        listXYWave.setSelected(value);
-        systems[activePS].ps.setXYWaveform(value);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderXYPhase.setValue_nochange(value);
-        systems[activePS].ps.setXYPhase(((float)value)/10000);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderRGB1.setValue_nochange(value);
-        systems[activePS].ps.setRGB1(((float)value)/10000);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderRGB2.setValue_nochange(value);
-        systems[activePS].ps.setRGB2(((float)value)/10000);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        listRGBWave.setSelected(value);
-        systems[activePS].ps.setRGBWave(value);
-      }
-      else status = false;
-    }
-    
-     if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderRGBPhase.setValue_nochange(value);
-        systems[activePS].ps.setRGBPhase(((float)value)/10000);
-      }
-      else status = false;
-    }
-    
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderAlpha1.setValue_nochange(value);
-        systems[activePS].ps.setAlpha1(((float)value)/10000);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderAlpha2.setValue_nochange(value);
-        systems[activePS].ps.setAlpha2(((float)value)/10000);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        listAlphaWave.setSelected(value);
-        systems[activePS].ps.setAlphaWave(value);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderAlphaPhase.setValue_nochange(value);
-        systems[activePS].ps.setAlphaPhase(((float)value)/10000);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        listSrcBlend.setSelected(value);
-        if (value==0) systems[activePS].ps.setSrcBlend(GL_ONE); 
-        if (value==1) systems[activePS].ps.setSrcBlend(GL_ZERO); 
-        if (value==2) systems[activePS].ps.setSrcBlend(GL_DST_COLOR); 
-        if (value==3) systems[activePS].ps.setSrcBlend(GL_ONE_MINUS_DST_COLOR); 
-        if (value==4) systems[activePS].ps.setSrcBlend(GL_SRC_ALPHA); 
-        if (value==5) systems[activePS].ps.setSrcBlend(GL_ONE_MINUS_SRC_ALPHA);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        listDstBlend.setSelected(value);
-        if (value==0) systems[activePS].ps.setDstBlend(GL_ONE); 
-        if (value==1) systems[activePS].ps.setDstBlend(GL_ZERO); 
-        if (value==2) systems[activePS].ps.setDstBlend(GL_SRC_COLOR); 
-        if (value==3) systems[activePS].ps.setDstBlend(GL_ONE_MINUS_SRC_COLOR); 
-        if (value==4) systems[activePS].ps.setDstBlend(GL_SRC_ALPHA); 
-        if (value==5) systems[activePS].ps.setDstBlend(GL_ONE_MINUS_SRC_ALPHA); 
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderStretch1.setValue_nochange(value);
-        systems[activePS].ps.setStretch1(((float)value)/10000);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderStretch2.setValue_nochange(value);
-        systems[activePS].ps.setStretch2(((float)value)/10000);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        listStretchWave.setSelected(value);
-        systems[activePS].ps.setStretchWave(value);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderStretchPhase.setValue_nochange(value);
-        systems[activePS].ps.setStretchPhase(((float)value)/10000);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderRotSpeed.setValue_nochange(value);
-        systems[activePS].ps.setRotSpeed(value);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &value , sizeof(int) );
-      if (!iFile.eof() )
-      {
-        sliderRotSpeedVar.setValue_nochange(value);
-        systems[activePS].ps.setRotSpeedVar(value);
-      }
-      else status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &bgred , sizeof(float) );
-      if (iFile.eof() ) status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &bggreen , sizeof(float) );
-      if (iFile.eof() ) status = false;
-    }
-    
-    if (status)
-    {
-      iFile.read( (char*) &bgblue , sizeof(float) );
-      if (iFile.eof() ) status = false;
-    }
-    
-    if (status)
-    {
-      bool fire;
-      iFile.read( (char*) &fire, sizeof(bool) );
-      if (iFile.eof() ) status = false;
-      else
-      {
-        systems[activePS].ps.setFireworkMode(!fire);
-        toggleFirework();
-      }
-    }
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		slider2.setValue_nochange(value);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderZoom.setValue_nochange(value);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderNP.setValue_nochange(value);
+		systems[activePS].ps.numParticles = value;
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderPSize.setValue_nochange(value);
+		systems[activePS].ps.setSize((float)value);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderHeight.setValue_nochange(value);
+		systems[activePS].ps.setHeight((float)value);
+	  }
+	  else status = false;
+	}    
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderHeightVar.setValue_nochange(value);
+		systems[activePS].ps.setHeightVar(value);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderEmitterZ.setValue_nochange(value);
+		systems[activePS].ps.setEmitterZ((float) value);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderFreq.setValue_nochange(value);
+		systems[activePS].ps.setFrequency(((float) value) / 10000);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderPG.setValue_nochange(value);
+		systems[activePS].ps.setPhaseGrouping(((float)value)/10000);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderMasterPhase.setValue_nochange(value);
+		systems[activePS].ps.setMasterPhase(((float) value )/10000);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		listZWave.setSelected(value);
+		systems[activePS].ps.setZWaveform(value);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderRadius.setValue_nochange(value);
+		systems[activePS].ps.setRadius(value);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderRadiusVar.setValue_nochange(value);
+		systems[activePS].ps.setRadiusVar(value);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderEmitterXY.setValue_nochange(value);
+		systems[activePS].ps.setEmitterXY(value);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderAngleGrouping.setValue_nochange(value);
+		systems[activePS].ps.setAngleGrouping(((float)value)/10000);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		listXYWave.setSelected(value);
+		systems[activePS].ps.setXYWaveform(value);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderXYPhase.setValue_nochange(value);
+		systems[activePS].ps.setXYPhase(((float)value)/10000);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderRGB1.setValue_nochange(value);
+		systems[activePS].ps.setRGB1(((float)value)/10000);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderRGB2.setValue_nochange(value);
+		systems[activePS].ps.setRGB2(((float)value)/10000);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		listRGBWave.setSelected(value);
+		systems[activePS].ps.setRGBWave(value);
+	  }
+	  else status = false;
+	}
+	
+	 if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderRGBPhase.setValue_nochange(value);
+		systems[activePS].ps.setRGBPhase(((float)value)/10000);
+	  }
+	  else status = false;
+	}
+	
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderAlpha1.setValue_nochange(value);
+		systems[activePS].ps.setAlpha1(((float)value)/10000);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderAlpha2.setValue_nochange(value);
+		systems[activePS].ps.setAlpha2(((float)value)/10000);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		listAlphaWave.setSelected(value);
+		systems[activePS].ps.setAlphaWave(value);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderAlphaPhase.setValue_nochange(value);
+		systems[activePS].ps.setAlphaPhase(((float)value)/10000);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		listSrcBlend.setSelected(value);
+		if (value==0) systems[activePS].ps.setSrcBlend(GL_ONE); 
+		if (value==1) systems[activePS].ps.setSrcBlend(GL_ZERO); 
+		if (value==2) systems[activePS].ps.setSrcBlend(GL_DST_COLOR); 
+		if (value==3) systems[activePS].ps.setSrcBlend(GL_ONE_MINUS_DST_COLOR); 
+		if (value==4) systems[activePS].ps.setSrcBlend(GL_SRC_ALPHA); 
+		if (value==5) systems[activePS].ps.setSrcBlend(GL_ONE_MINUS_SRC_ALPHA);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		listDstBlend.setSelected(value);
+		if (value==0) systems[activePS].ps.setDstBlend(GL_ONE); 
+		if (value==1) systems[activePS].ps.setDstBlend(GL_ZERO); 
+		if (value==2) systems[activePS].ps.setDstBlend(GL_SRC_COLOR); 
+		if (value==3) systems[activePS].ps.setDstBlend(GL_ONE_MINUS_SRC_COLOR); 
+		if (value==4) systems[activePS].ps.setDstBlend(GL_SRC_ALPHA); 
+		if (value==5) systems[activePS].ps.setDstBlend(GL_ONE_MINUS_SRC_ALPHA); 
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderStretch1.setValue_nochange(value);
+		systems[activePS].ps.setStretch1(((float)value)/10000);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderStretch2.setValue_nochange(value);
+		systems[activePS].ps.setStretch2(((float)value)/10000);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		listStretchWave.setSelected(value);
+		systems[activePS].ps.setStretchWave(value);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderStretchPhase.setValue_nochange(value);
+		systems[activePS].ps.setStretchPhase(((float)value)/10000);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderRotSpeed.setValue_nochange(value);
+		systems[activePS].ps.setRotSpeed(value);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &value , sizeof(int) );
+	  if (!iFile.eof() )
+	  {
+		sliderRotSpeedVar.setValue_nochange(value);
+		systems[activePS].ps.setRotSpeedVar(value);
+	  }
+	  else status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &bgred , sizeof(float) );
+	  if (iFile.eof() ) status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &bggreen , sizeof(float) );
+	  if (iFile.eof() ) status = false;
+	}
+	
+	if (status)
+	{
+	  iFile.read( (char*) &bgblue , sizeof(float) );
+	  if (iFile.eof() ) status = false;
+	}
+	
+	if (status)
+	{
+	  bool fire;
+	  iFile.read( (char*) &fire, sizeof(bool) );
+	  if (iFile.eof() ) status = false;
+	  else
+	  {
+		systems[activePS].ps.setFireworkMode(!fire);
+		toggleFirework();
+	  }
+	}
 
 	if (status)
 	{
@@ -3062,7 +2864,7 @@ bool loadStateFromFile(char *filename, particleSystem &ps,std::ifstream &iFile)
 		systems[activePS].ps.zBase = ((float)value)/10000;
 		if (iFile.eof() ) status = false;
 	}
-    
+	
 	if (status)
 	{
 		iFile.read( (char*) &value, sizeof(value));
@@ -3082,111 +2884,44 @@ bool loadStateFromFile(char *filename, particleSystem &ps,std::ifstream &iFile)
 		if (iFile.eof() ) status = false;
 	}
 
-    systems[activePS].ps.buildParticles();
-    return status;
+	systems[activePS].ps.buildParticles();
+	return status;
   }
   return false;
 }
 
 void updateSystemsTabUI()
 {
-	// Line one
-	BGSort1.setValue_nochange(systems[0].sort);
-	BGx1.setValue_nochange(systems[0].x);
-	BGy1.setValue_nochange(systems[0].y);
-	BGz1.setValue_nochange(systems[0].z);
-	BGrx1.setValue_nochange(systems[0].ps.rotx);
-	BGry1.setValue_nochange(systems[0].ps.roty);
-	BGrz1.setValue_nochange(systems[0].ps.rotz);
-	if (systems[0].active) 
+	for (int i=0;i<MAX_SYSTEMS;i++)
 	{
-		BGLoad1.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);//Light Blue
-		BGLoad1.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_ACTIVE);//Light Blue
-		BGLoad1.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_HOVERACTIVE);//Light Blue
+		sorts[i].setValue_nochange(systems[i].sort);
+		posXs[i].setValue_nochange(systems[i].x   );
+		posYs[i].setValue_nochange(systems[i].y   );
+		posXs[i].setValue_nochange(systems[i].z   );
+		rotXs[i].setValue_nochange(systems[i].ps.rotx);
+		rotYs[i].setValue_nochange(systems[i].ps.roty);
+		rotZs[i].setValue_nochange(systems[i].ps.rotz);
+		if(systems[i].active)
+		{
+			buttons[i].setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);
+			buttons[i].setColor(SYS_BUT_CURRENT,BUTTON_COLOR_ACTIVE);
+			buttons[i].setColor(SYS_BUT_CURRENT,BUTTON_COLOR_HOVERACTIVE);
+		}
+		else
+		{			
+			buttons[i].setColor(SYS_BUT_DISABLE,BUTTON_COLOR);				
+			buttons[i].setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_ACTIVE);		
+			buttons[i].setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_HOVERACTIVE);	
+		}
 	}
-	else
-	{
-		BGLoad1.setColor(SYS_BUT_DISABLE,BUTTON_COLOR);//Light Blue
-		BGLoad1.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_ACTIVE);//Light Blue
-		BGLoad1.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-	}
-
-	// Line two
-	BGSort2.setValue_nochange(systems[1].sort);
-	BGx2.setValue_nochange(systems[1].x);
-	BGy2.setValue_nochange(systems[1].y);
-	BGz2.setValue_nochange(systems[1].z);
-	BGrx2.setValue_nochange(systems[1].ps.rotx);
-	BGry2.setValue_nochange(systems[2].ps.roty);
-	BGrz2.setValue_nochange(systems[1].ps.rotz);
-	if (systems[1].active) 
-	{
-		BGLoad2.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);//Light Blue
-		BGLoad2.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_ACTIVE);//Light Blue
-		BGLoad2.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-	}
-	else
-	{
-		BGLoad2.setColor(SYS_BUT_DISABLE,BUTTON_COLOR);//Light Blue
-		BGLoad2.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_ACTIVE);//Light Blue
-		BGLoad2.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-	}
-
-	// Line three
-	BGSort3.setValue_nochange(systems[2].sort);
-	BGx3.setValue_nochange(systems[2].x);
-	BGy3.setValue_nochange(systems[2].y);
-	BGz3.setValue_nochange(systems[2].z);
-	BGrx3.setValue_nochange(systems[2].ps.rotx);
-	BGry3.setValue_nochange(systems[2].ps.roty);
-	BGrz3.setValue_nochange(systems[2].ps.rotz);
-	if (systems[2].active) 
-	{
-		BGLoad3.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);//Light Blue
-		BGLoad3.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_ACTIVE);//Light Blue
-		BGLoad3.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-	}
-	else
-	{
-		BGLoad3.setColor(SYS_BUT_DISABLE,BUTTON_COLOR);//Light Blue
-		BGLoad3.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_ACTIVE);//Light Blue
-		BGLoad3.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-	}
-
-	// Line four
-	BGSort4.setValue_nochange(systems[3].sort);
-	BGx4.setValue_nochange(systems[3].x);
-	BGy4.setValue_nochange(systems[3].y);
-	BGz4.setValue_nochange(systems[3].z);
-	BGrx4.setValue_nochange(systems[3].ps.rotx);
-	BGry4.setValue_nochange(systems[3].ps.roty);
-	BGrz4.setValue_nochange(systems[3].ps.rotz);
-	if (systems[3].active) 
-	{
-		BGLoad4.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR);//Light Blue
-		BGLoad4.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_ACTIVE);//Light Blue
-		BGLoad4.setColor(SYS_BUT_CURRENT,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-	}
-	else
-	{
-		BGLoad4.setColor(SYS_BUT_DISABLE,BUTTON_COLOR);//Light Blue
-		BGLoad4.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_ACTIVE);//Light Blue
-		BGLoad4.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_HOVERACTIVE);//Light Blue
-	}
-
-	button* buttons[4];
-	buttons[0] = &BGLoad1;
-	buttons[1] = &BGLoad2;
-	buttons[2] = &BGLoad3;
-	buttons[3] = &BGLoad4;
-
-	buttons[activePS]->setColor(SYS_BUT_CURRENT,BUTTON_COLOR);
-	buttons[activePS]->setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);
-	buttons[activePS]->setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);
+	
+	buttons[activePS].setColor(SYS_BUT_CURRENT,BUTTON_COLOR);
+	buttons[activePS].setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);
+	buttons[activePS].setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);	
 }
 
 
-int loadSettings()
+void loadSettings()
 {
   OPENFILENAME ofn;
   char szFileName[MAX_PATH];
@@ -3207,38 +2942,37 @@ int loadSettings()
   
   if (GetOpenFileName(&ofn) != 0)
   {
-    std::ifstream iFile(szFileName, std::ios::out | std::ios::binary);
-    if (loadStateFromFile(szFileName,systems[activePS].ps,iFile)) status = true;
-    else status = false;
-    if (!status) MessageBox(NULL, "End of file reached before loading completed, some settings may be incorrect", "Loading...", MB_OK);
+	std::ifstream iFile(szFileName, std::ios::out | std::ios::binary);
+	if (loadStateFromFile(szFileName,systems[activePS].ps,iFile)) status = true;
+	else status = false;
+	if (!status) MessageBox(NULL, "End of file reached before loading completed, some settings may be incorrect", "Loading...", MB_OK);
 	if (iFile.is_open()) iFile.close();
-    //else MessageBox(NULL, "Error During Save", "Saving...", MB_OK);
+	//else MessageBox(NULL, "Error During Save", "Saving...", MB_OK);
 	updateSystemsTabUI();
-  }  
-  return 0;
+  }
 }
 
-int loadAllSettings()
+void loadAllSettings()
 {
-  OPENFILENAME ofn;
-  char szFileName[MAX_PATH];
-  //char path[MAX_PATH];
-  bool status;
+	OPENFILENAME ofn;
+	char szFileName[MAX_PATH];
+	//char path[MAX_PATH];
+	bool status;
 
-  ZeroMemory(&ofn, sizeof(ofn));
-  szFileName[0] = 0;
+	ZeroMemory(&ofn, sizeof(ofn));
+	szFileName[0] = 0;
 
-  ofn.lStructSize = sizeof(ofn);
-  ofn.hwndOwner = hWnd;
-  ofn.lpstrFilter = "Multi-Settings File (*.mpset)\0*.mpset\0All Files (*.*)\0*.*\0\0";
-  ofn.lpstrFile = szFileName;
-  ofn.nMaxFile = MAX_PATH;
-  ofn.lpstrDefExt = "pset";
-  ofn.Flags = OFN_NONETWORKBUTTON | OFN_NOCHANGEDIR;
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = hWnd;
+	ofn.lpstrFilter = "Multi-Settings File (*.mpset)\0*.mpset\0All Files (*.*)\0*.*\0\0";
+	ofn.lpstrFile = szFileName;
+	ofn.nMaxFile = MAX_PATH;
+	ofn.lpstrDefExt = "pset";
+	ofn.Flags = OFN_NONETWORKBUTTON | OFN_NOCHANGEDIR;
   
   
-  if (GetOpenFileName(&ofn) != 0)
-  {
+	if (GetOpenFileName(&ofn) != 0)
+	{
 	std::ifstream iFile(szFileName, std::ios::out | std::ios::binary);
 	status = true;
 	int activeHold = activePS;
@@ -3278,1679 +3012,1587 @@ int loadAllSettings()
 	if (iFile.is_open()) iFile.close();
 
 	updateSystemsTabUI();
-
-	//activeProcessor(activeHold);
-
-  }  
-  return 0;
+  }
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
-                   LPSTR lpCmdLine, int iCmdShow)
+/*int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
+				   LPSTR lpCmdLine, int iCmdShow)*/
+int WINAPI  WinMain (
+	_In_ HINSTANCE hInstance,_In_opt_ HINSTANCE hPrevInstance,
+	_In_ LPSTR lpCmdLine, _In_ int nShowCmd
+	)
 {
-                   
-  //std::ofstream oFile("ps_log.txt",std::ios::app);
-  //oFile.close();
-  WNDCLASS wc;
-  //HWND hWnd;
-  HDC hDC;
-  HGLRC hRC;    
-  MSG msg;
-  BOOL bQuit = FALSE;
-  pos.x = 200;
-  pos.y = 200;
+				   
+	//std::ofstream oFile("ps_log.txt",std::ios::app);
+	//oFile.close();
+	WNDCLASS wc;
+	//HWND hWnd;
+	HDC hDC;
+	HGLRC hRC;    
+	MSG msg;
+	BOOL bQuit = FALSE;
+	pos.x = 200;
+	pos.y = 200;
   
-  GetCurrentDirectory(MAX_PATH, workingDir);
+	GetCurrentDirectory(MAX_PATH, workingDir);
   
-  // register window class
-  wc.style = CS_OWNDC;
-  wc.lpfnWndProc = WndProc;
-  wc.cbClsExtra = 0;
-  wc.cbWndExtra = 0;
-  wc.hInstance = hInstance;
-  wc.hIcon = LoadIcon( NULL, IDI_APPLICATION );
-  wc.hCursor = LoadCursor( NULL, IDC_ARROW );
-  wc.hbrBackground = (HBRUSH)GetStockObject( BLACK_BRUSH );
-  wc.lpszMenuName = NULL;
-  wc.lpszClassName = "GLWindow";
-  RegisterClass( &wc );
+	// register window class
+	wc.style = CS_OWNDC;
+	wc.lpfnWndProc = WndProc;
+	wc.cbClsExtra = 0;
+	wc.cbWndExtra = 0;
+	wc.hInstance = hInstance;
+	wc.hIcon = LoadIcon( NULL, IDI_APPLICATION );
+	wc.hCursor = LoadCursor( NULL, IDC_ARROW );
+	wc.hbrBackground = (HBRUSH)GetStockObject( BLACK_BRUSH );
+	wc.lpszMenuName = NULL;
+	wc.lpszClassName = "GLWindow";
+	RegisterClass( &wc );
 
-  // create main window
-  hWnd = CreateWindow( 
-  "GLWindow", "FS Particle Studio", 
-  WS_MINIMIZEBOX | /*WS_MAXIMIZEBOX |*/ WS_CAPTION | WS_POPUPWINDOW | WS_VISIBLE,
-  100, 100, WN_WIDTH-1,WN_HEIGHT-1,
-  NULL, NULL, hInstance, NULL);
+	// create main window
+	hWnd = CreateWindow( 
+	"GLWindow", "FS Particle Studio", 
+	WS_MINIMIZEBOX | /*WS_MAXIMIZEBOX |*/ WS_CAPTION | WS_POPUPWINDOW | WS_VISIBLE,
+	100, 100, WN_WIDTH-1,WN_HEIGHT-1,
+	NULL, NULL, hInstance, NULL);
   
-  //MessageBox (NULL, "About..." , "Windows example version 0.01", 1);
+	//MessageBox (NULL, "About..." , "Windows example version 0.01", 1);
   
-  // enable OpenGL for the window
-  EnableOpenGL( hWnd, &hDC, &hRC );
-  /*
-  glShadeModel(GL_SMOOTH);							// Enable Smooth Shading
+	// enable OpenGL for the window
+	EnableOpenGL( hWnd, &hDC, &hRC );
+	/*
+	glShadeModel(GL_SMOOTH);							// Enable Smooth Shading
 	glEnable(GL_DEPTH_TEST);							// Enables Depth Testing
 	glDepthFunc(GL_LEQUAL);								// The Type Of Depth Testing To Do
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);	// Really Nice Perspective Calculations
-  */
+	*/
 
-  activePS = 0;  // Select the first particle system
-  systems[activePS].active = true;
-  paused = false;
-  minimized = false;
+	activePS = 0;  // Select the first particle system
+	systems[activePS].active = true;
+	paused = false;
+	minimized = false;
   
-  // Load Textures
+	// Load Textures
   
-  loadGLTextures();
+	loadGLTextures();
 
-  glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
   
-  bgred = 0.0f;
-  bggreen = 0.0f;
-  bgblue = 0.0f;
+	bgred = 0.0f;
+	bggreen = 0.0f;
+	bgblue = 0.0f;
   
-  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);				// Black Background
-  gluOrtho2D(0,GL_WIDTH-1,0,GL_HEIGHT-1);
-  glClearDepth(1.0f);									// Depth Buffer Setup
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);				// Black Background
+	gluOrtho2D(0,GL_WIDTH-1,0,GL_HEIGHT-1);
+	glClearDepth(1.0f);									// Depth Buffer Setup
   
-  GetClientRect(hWnd, &rc);
+	GetClientRect(hWnd, &rc);
   
-  mouse.x = rc.right;
-  mouse.y = rc.bottom;
+	mouse.x = rc.right;
+	mouse.y = rc.bottom;
+
+	for (auto &s : systems)
+	{
+		s.ps.buildParticles();
+	}
   
-  systems[0].ps.buildParticles();
-  systems[1].ps.buildParticles();
-  systems[2].ps.buildParticles();
-  systems[3].ps.buildParticles();
+	/*systems[0].ps.buildParticles();
+	systems[1].ps.buildParticles();
+	systems[2].ps.buildParticles();
+	systems[3].ps.buildParticles();*/
   
-  label drawTime;
-  drawTime.location.x = 20;
-  drawTime.location.y = 450;
-  drawTime.size.x = 50;
-  drawTime.size.x = 15;
-  drawTime.txtSize = 15;
-  drawTime.alignment = ALIGN_LEFT;
-  drawTime.setString("");
-  drawTime.maxSize = 200;
+	drawTime.location.x = 20;
+	drawTime.location.y = 450;
+	drawTime.size.x = 50;
+	drawTime.size.y = 15;
+	drawTime.txtSize = 15;
+	drawTime.alignment = ALIGN_LEFT;
+	drawTime.setString("");
+	drawTime.maxSize = 200;
   
-  label drawFPS;
-  drawFPS.location.x = 620;
-  drawFPS.location.y = 450;
-  drawFPS.txtSize = 15;
-  drawFPS.alignment = ALIGN_RIGHT;
-  drawFPS.setString("");
-  drawFPS.maxSize = 200;
+	label drawFPS;
+	drawFPS.location.x = 620;
+	drawFPS.location.y = 450;
+	drawFPS.txtSize = 15;
+	drawFPS.alignment = ALIGN_RIGHT;
+	drawFPS.setString("");
+	drawFPS.maxSize = 200;
   
-  tab tabFile;
-  entities.bindEnt(&tabFile);  
-  tabFile.location.x = 25;
-  tabFile.location.y = 0;
-  tabFile.size.x = 105;
-  tabFile.size.y = 15;
-  tabFile.setOnClick(tabClicked);
-  tabFile.l_name.location.x = tabFile.location.x + 10;
-  tabFile.l_name.location.y = tabFile.location.y;
-  tabFile.l_name.txtSize = tabFile.size.y;
-  tabFile.l_name.maxSize = tabFile.size.x - 20;
-  tabFile.l_name.setString("File");
+	tab tabFile;
+	entities.bindEnt(&tabFile);  
+	tabFile.location.x = 25;
+	tabFile.location.y = 0;
+	tabFile.size.x = 105;
+	tabFile.size.y = 15;
+	tabFile.setOnClick(tabClicked);
+	tabFile.l_name.location.x = tabFile.location.x + 10;
+	tabFile.l_name.location.y = tabFile.location.y;
+	tabFile.l_name.txtSize = tabFile.size.y;
+	tabFile.l_name.maxSize = tabFile.size.x - 20;
+	tabFile.l_name.setString("File");
   
-  tab tabDyn1;
-  entities.bindEnt(&tabDyn1);  
-  tabDyn1.location.x = 120;
-  tabDyn1.location.y = 0;
-  tabDyn1.size.x = 105;
-  tabDyn1.size.y = 15;
-  tabDyn1.setOnClick(tabClicked);
-  //tabDyn1.setColor(0.7,0.4,0.3,TAB_COLOR_ACTIVE);
-  //tabDyn1.setColor(0.5,0.5,0.5,TAB_COLOR);
-  tabDyn1.l_name.location.x = tabDyn1.location.x + 10;
-  tabDyn1.l_name.location.y = tabDyn1.location.y;
-  tabDyn1.l_name.txtSize = tabDyn1.size.y;
-  tabDyn1.l_name.maxSize = tabDyn1.size.x - 20;
-  tabDyn1.l_name.setString("Dynamics 1");
+	tab tabDyn1;
+	entities.bindEnt(&tabDyn1);  
+	tabDyn1.location.x = 120;
+	tabDyn1.location.y = 0;
+	tabDyn1.size.x = 105;
+	tabDyn1.size.y = 15;
+	tabDyn1.setOnClick(tabClicked);
+	//tabDyn1.setColor(0.7,0.4,0.3,TAB_COLOR_ACTIVE);
+	//tabDyn1.setColor(0.5,0.5,0.5,TAB_COLOR);
+	tabDyn1.l_name.location.x = tabDyn1.location.x + 10;
+	tabDyn1.l_name.location.y = tabDyn1.location.y;
+	tabDyn1.l_name.txtSize = tabDyn1.size.y;
+	tabDyn1.l_name.maxSize = tabDyn1.size.x - 20;
+	tabDyn1.l_name.setString("Dynamics 1");
   
-  tab tabDyn2;
-  entities.bindEnt(&tabDyn2);
-  tabDyn2.location.x = 215;
-  tabDyn2.location.y = 0;
-  tabDyn2.size.x = 105;
-  tabDyn2.size.y = 15;
-  tabDyn2.setOnClick(tabClicked);
-  //tabDyn2.setColor(0.5,0.7,0.3,TAB_COLOR_ACTIVE);
-  //tabDyn2.setColor(0.5,0.5,0.5,TAB_COLOR);
-  tabDyn2.l_name.location.x = tabDyn2.location.x + 10;
-  tabDyn2.l_name.location.y = tabDyn2.location.y;
-  tabDyn2.l_name.txtSize = tabDyn2.size.y;
-  tabDyn2.l_name.maxSize = tabDyn2.size.x - 20;
-  tabDyn2.l_name.setString("Dynamics 2");
+	tab tabDyn2;
+	entities.bindEnt(&tabDyn2);
+	tabDyn2.location.x = 215;
+	tabDyn2.location.y = 0;
+	tabDyn2.size.x = 105;
+	tabDyn2.size.y = 15;
+	tabDyn2.setOnClick(tabClicked);
+	//tabDyn2.setColor(0.5,0.7,0.3,TAB_COLOR_ACTIVE);
+	//tabDyn2.setColor(0.5,0.5,0.5,TAB_COLOR);
+	tabDyn2.l_name.location.x = tabDyn2.location.x + 10;
+	tabDyn2.l_name.location.y = tabDyn2.location.y;
+	tabDyn2.l_name.txtSize = tabDyn2.size.y;
+	tabDyn2.l_name.maxSize = tabDyn2.size.x - 20;
+	tabDyn2.l_name.setString("Dynamics 2");
   
-  tab tabBlend;
-  entities.bindEnt(&tabBlend);
-  tabBlend.location.x = 310;
-  tabBlend.location.y = 0;
-  tabBlend.size.x = 105;
-  tabBlend.size.y = 15;
-  tabBlend.setOnClick(tabClicked);
-  //tabBlend.setColor(0.5,0.7,0.3,TAB_COLOR_ACTIVE);
-  //tabBlend.setColor(0.5,0.5,0.5,TAB_COLOR);
-  tabBlend.l_name.location.x = tabBlend.location.x + 10;
-  tabBlend.l_name.location.y = tabBlend.location.y;
-  tabBlend.l_name.txtSize = tabBlend.size.y;
-  tabBlend.l_name.maxSize = tabBlend.size.x - 20;
-  tabBlend.l_name.setString("Blending");
+	tab tabBlend;
+	entities.bindEnt(&tabBlend);
+	tabBlend.location.x = 310;
+	tabBlend.location.y = 0;
+	tabBlend.size.x = 105;
+	tabBlend.size.y = 15;
+	tabBlend.setOnClick(tabClicked);
+	//tabBlend.setColor(0.5,0.7,0.3,TAB_COLOR_ACTIVE);
+	//tabBlend.setColor(0.5,0.5,0.5,TAB_COLOR);
+	tabBlend.l_name.location.x = tabBlend.location.x + 10;
+	tabBlend.l_name.location.y = tabBlend.location.y;
+	tabBlend.l_name.txtSize = tabBlend.size.y;
+	tabBlend.l_name.maxSize = tabBlend.size.x - 20;
+	tabBlend.l_name.setString("Blending");
   
-  tab tabTcMod;
-  entities.bindEnt(&tabTcMod);
-  tabTcMod.location.x = 405;
-  tabTcMod.location.y = 0;
-  tabTcMod.size.x = 105;
-  tabTcMod.size.y = 15;
-  tabTcMod.setOnClick(tabClicked);
-  //tabExp.setColor(0.5,0.7,0.3,TAB_COLOR_ACTIVE);
-  //tabTcMod.setColor(0.4,0.4,0.4,TAB_COLOR);
-  tabTcMod.l_name.location.x = tabTcMod.location.x + 10;
-  tabTcMod.l_name.location.y = tabTcMod.location.y;
-  tabTcMod.l_name.txtSize = tabTcMod.size.y;
-  tabTcMod.l_name.maxSize = tabTcMod.size.x - 20;
-  tabTcMod.l_name.setString(" tcMod");
+	tab tabTcMod;
+	entities.bindEnt(&tabTcMod);
+	tabTcMod.location.x = 405;
+	tabTcMod.location.y = 0;
+	tabTcMod.size.x = 105;
+	tabTcMod.size.y = 15;
+	tabTcMod.setOnClick(tabClicked);
+	//tabExp.setColor(0.5,0.7,0.3,TAB_COLOR_ACTIVE);
+	//tabTcMod.setColor(0.4,0.4,0.4,TAB_COLOR);
+	tabTcMod.l_name.location.x = tabTcMod.location.x + 10;
+	tabTcMod.l_name.location.y = tabTcMod.location.y;
+	tabTcMod.l_name.txtSize = tabTcMod.size.y;
+	tabTcMod.l_name.maxSize = tabTcMod.size.x - 20;
+	tabTcMod.l_name.setString(" tcMod");
   
-  tab tabExp;
-  entities.bindEnt(&tabExp);
-  tabExp.location.x = 500;
-  tabExp.location.y = 0;
-  tabExp.size.x = 105;
-  tabExp.size.y = 15;
-  tabExp.setOnClick(runExport);
-  //tabExp.setColor(0.5,0.7,0.3,TAB_COLOR_ACTIVE);
-  tabExp.setColor(0.4,0.4,0.4,TAB_COLOR);
-  tabExp.l_name.location.x = tabExp.location.x + 10;
-  tabExp.l_name.location.y = tabExp.location.y;
-  tabExp.l_name.txtSize = tabExp.size.y;
-  tabExp.l_name.maxSize = tabExp.size.x - 20;
-  tabExp.l_name.setString("   Export   ");
+	tab tabExp;
+	entities.bindEnt(&tabExp);
+	tabExp.location.x = 500;
+	tabExp.location.y = 0;
+	tabExp.size.x = 105;
+	tabExp.size.y = 15;
+	tabExp.setOnClick(runExport);
+	//tabExp.setColor(0.5,0.7,0.3,TAB_COLOR_ACTIVE);
+	tabExp.setColor(0.4,0.4,0.4,TAB_COLOR);
+	tabExp.l_name.location.x = tabExp.location.x + 10;
+	tabExp.l_name.location.y = tabExp.location.y;
+	tabExp.l_name.txtSize = tabExp.size.y;
+	tabExp.l_name.maxSize = tabExp.size.x - 20;
+	tabExp.l_name.setString("   Export   ");
   
-  slider1.location.x = 20;
-  slider1.location.y = 131;
-  slider1.size.x = 600;
-  slider1.size.y = 6;
-  slider1.setSliderWidth(30);
-  slider1.setBounds(-180,180);
-  slider1.setValue(0);
-  entities.bindEnt(&slider1);
+	slider1.location.x = 20;
+	slider1.location.y = 131;
+	slider1.size.x = 600;
+	slider1.size.y = 6;
+	slider1.setSliderWidth(30);
+	slider1.setBounds(-180,180);
+	slider1.setValue(0);
+	entities.bindEnt(&slider1);
 
   
-  slider2.location.x = 20;
-  slider2.location.y = 139;
-  slider2.size.x = 600;
-  slider2.size.y = 6;
-  slider2.setSliderWidth(30);
-  slider2.setBounds(-85,85);
-  slider2.setValue(0);
-  entities.bindEnt(&slider2);  
+	slider2.location.x = 20;
+	slider2.location.y = 139;
+	slider2.size.x = 600;
+	slider2.size.y = 6;
+	slider2.setSliderWidth(30);
+	slider2.setBounds(-85,85);
+	slider2.setValue(0);
+	entities.bindEnt(&slider2);  
    
-  sliderZoom.location.x = 20;
-  sliderZoom.location.y = 147;
-  sliderZoom.size.x = 600;
-  sliderZoom.size.y = 6;
-  sliderZoom.setSliderWidth(30);
-  sliderZoom.setBounds(100,10000*3,10000);
-  sliderZoom.setIntermediatePosition( sliderZoom.size.x / 2);
-  sliderZoom.setValue(10000);  
-  sliderZoom.setType(TYPE_FLOAT);
+	sliderZoom.location.x = 20;
+	sliderZoom.location.y = 147;
+	sliderZoom.size.x = 600;
+	sliderZoom.size.y = 6;
+	sliderZoom.setSliderWidth(30);
+	sliderZoom.setBounds(100,10000*3,10000);
+	sliderZoom.setIntermediatePosition( sliderZoom.size.x / 2);
+	sliderZoom.setValue(10000);  
+	sliderZoom.setType(TYPE_FLOAT);
   
-  entities.bindEnt(&sliderZoom);  
+	entities.bindEnt(&sliderZoom);  
   
-  //basePath[0] = basePath[1] = 0;
+	//basePath[0] = basePath[1] = 0;
   
-  txtBasePath.setOnChange(basePathBoxChanged);
-  txtBasePath.l_name.setString("Base Path:");
-  txtBasePath.useLabelName = true;
-  txtBasePath.size.x = 193;
-  txtBasePath.location.x = 125;
-  txtBasePath.l_name.location.x = 125;
-  tabFile.bindEnt(&txtBasePath);
-  entities.bindEnt(&txtBasePath);
+	txtBasePath.setOnChange(basePathBoxChanged);
+	txtBasePath.l_name.setString("Base Path:");
+	txtBasePath.useLabelName = true;
+	txtBasePath.size.x = 193;
+	txtBasePath.location.x = 125;
+	txtBasePath.l_name.location.x = 125;
+	tabFile.bindEnt(&txtBasePath);
+	entities.bindEnt(&txtBasePath);
   
-  selectBasePath.location.x = 325;
-  selectBasePath.location.y = 100;
-  selectBasePath.l_name.setString("Find");
-  selectBasePath.l_name.alignment = ALIGN_LEFT;
-  selectBasePath.useLabelName = true;
-  selectBasePath.l_name.location.x = selectBasePath.location.x+selectBasePath.size.x;
-  selectBasePath.l_name.location.y = selectBasePath.location.y;
-  selectBasePath.l_name.txtSize = selectBasePath.size.y;
-  selectBasePath.setOnClick(getBasePathDir);
+	selectBasePath.location.x = 325;
+	selectBasePath.location.y = 100;
+	selectBasePath.l_name.setString("Find");
+	selectBasePath.l_name.alignment = ALIGN_LEFT;
+	selectBasePath.useLabelName = true;
+	selectBasePath.l_name.location.x = selectBasePath.location.x+selectBasePath.size.x;
+	selectBasePath.l_name.location.y = selectBasePath.location.y;
+	selectBasePath.l_name.txtSize = selectBasePath.size.y;
+	selectBasePath.setOnClick(getBasePathDir);
   
-  tabFile.bindEnt(&selectBasePath);
-  entities.bindEnt(&selectBasePath); 
-  
-  
-  txtShaderName.setOnChange(shaderNameBoxChanged);
-  txtShaderName.l_name.setString("Shader Name: TEXTURES/");
-  txtShaderName.useLabelName = true;
-  txtShaderName.location.y = 75;
-  txtShaderName.location.x = 203;
-  txtShaderName.size.x = 115;
-  txtShaderName.l_name.location.x = txtShaderName.location.x;
-  txtShaderName.l_name.location.y = txtShaderName.location.y;
-  txtShaderName.location.x = 202;
-  txtShaderName.size.x = 116;
-  tabFile.bindEnt(&txtShaderName);
-  entities.bindEnt(&txtShaderName);
+	tabFile.bindEnt(&selectBasePath);
+	entities.bindEnt(&selectBasePath); 
   
   
-  txtTextureName.setOnChange(textureNameBoxChanged);
-  txtTextureName.l_name.setString("Texture Name:");
-  txtTextureName.useLabelName = true;
-  txtTextureName.location.y = 50;
-  txtTextureName.location.x = 125;
-  txtTextureName.size.x = 193;
-  txtTextureName.l_name.location.y = 50;
-  txtTextureName.l_name.location.x = 125;
-  tabFile.bindEnt(&txtTextureName);
-  entities.bindEnt(&txtTextureName);
+	txtShaderName.setOnChange(shaderNameBoxChanged);
+	txtShaderName.l_name.setString("Shader Name: TEXTURES/");
+	txtShaderName.useLabelName = true;
+	txtShaderName.location.y = 75;
+	txtShaderName.location.x = 203;
+	txtShaderName.size.x = 115;
+	txtShaderName.l_name.location.x = txtShaderName.location.x;
+	txtShaderName.l_name.location.y = txtShaderName.location.y;
+	txtShaderName.location.x = 202;
+	txtShaderName.size.x = 116;
+	tabFile.bindEnt(&txtShaderName);
+	entities.bindEnt(&txtShaderName);
   
-    
-  selectTexture.location.x = 325;
-  selectTexture.location.y = 50;
-  selectTexture.l_name.setString("Find");
-  selectTexture.l_name.alignment = ALIGN_LEFT;
-  selectTexture.useLabelName = true;
-  selectTexture.l_name.location.x = selectTexture.location.x+selectTexture.size.x;
-  selectTexture.l_name.location.y = selectTexture.location.y;
-  selectTexture.l_name.txtSize = selectTexture.size.y;
-  selectTexture.setOnClick(getTexture);
   
-  tabFile.bindEnt(&selectTexture);
-  entities.bindEnt(&selectTexture);
+	txtTextureName.setOnChange(textureNameBoxChanged);
+	txtTextureName.l_name.setString("Texture Name:");
+	txtTextureName.useLabelName = true;
+	txtTextureName.location.y = 50;
+	txtTextureName.location.x = 125;
+	txtTextureName.size.x = 193;
+	txtTextureName.l_name.location.y = 50;
+	txtTextureName.l_name.location.x = 125;
+	tabFile.bindEnt(&txtTextureName);
+	entities.bindEnt(&txtTextureName);
   
-  rgbPicker.location.x = 580;
-  rgbPicker.location.y = 100;
-  rgbPicker.l_name.setString("Background Colour");
-  rgbPicker.useLabelName = true;
-  rgbPicker.l_name.location.x = rgbPicker.location.x;
-  rgbPicker.l_name.location.y = rgbPicker.location.y;
-  rgbPicker.l_name.txtSize = rgbPicker.size.y;
-  rgbPicker.setOnClick(colourPickerPressed);
+	
+	selectTexture.location.x = 325;
+	selectTexture.location.y = 50;
+	selectTexture.l_name.setString("Find");
+	selectTexture.l_name.alignment = ALIGN_LEFT;
+	selectTexture.useLabelName = true;
+	selectTexture.l_name.location.x = selectTexture.location.x+selectTexture.size.x;
+	selectTexture.l_name.location.y = selectTexture.location.y;
+	selectTexture.l_name.txtSize = selectTexture.size.y;
+	selectTexture.setOnClick(getTexture);
   
-  tabFile.bindEnt(&rgbPicker);
-  entities.bindEnt(&rgbPicker);  
+	tabFile.bindEnt(&selectTexture);
+	entities.bindEnt(&selectTexture);
   
-  butShowPlayer.location.x = 580;
-  butShowPlayer.location.y = 75;
-  butShowPlayer.l_name.setString("Show Player");
-  butShowPlayer.useLabelName = true;
-  butShowPlayer.l_name.location.x = butShowPlayer.location.x;
-  butShowPlayer.l_name.location.y = butShowPlayer.location.y;
-  butShowPlayer.l_name.txtSize = butShowPlayer.size.y;
-  butShowPlayer.setOnClick(togglePlayerVis);
+	rgbPicker.location.x = 580;
+	rgbPicker.location.y = 100;
+	rgbPicker.l_name.setString("Background Colour");
+	rgbPicker.useLabelName = true;
+	rgbPicker.l_name.location.x = rgbPicker.location.x;
+	rgbPicker.l_name.location.y = rgbPicker.location.y;
+	rgbPicker.l_name.txtSize = rgbPicker.size.y;
+	rgbPicker.setOnClick(colourPickerPressed);
   
-  tabFile.bindEnt(&butShowPlayer);
-  entities.bindEnt(&butShowPlayer);
-  
-  firework.location.x = 315;
-  firework.location.y = 23;
-  firework.size.y = 10;
-  firework.l_name.setString("Experimental Firework Mode: OFF");
-  firework.useLabelName = true;
-  firework.l_name.location.x = firework.location.x;
-  firework.l_name.location.y = firework.location.y;
-  firework.l_name.txtSize = firework.size.y;
-  firework.setOnClick(toggleFirework);
-  
-  tabFile.bindEnt(&firework);
-  entities.bindEnt(&firework);
-  
-  butLoad.location.x = 580;
-  butLoad.location.y = 50;
-  butLoad.l_name.setString("Load");
-  butLoad.useLabelName = true;
-  butLoad.l_name.location.x = butLoad.location.x;
-  butLoad.l_name.location.y = butLoad.location.y;
-  butLoad.l_name.txtSize = butLoad.size.y;
-  butLoad.setOnClick(loadSettings);
-  
-  tabFile.bindEnt(&butLoad);
-  entities.bindEnt(&butLoad);
-  
-  butSave.location.x = 580;
-  butSave.location.y = 25;
-  butSave.l_name.setString("Save");
-  butSave.useLabelName = true;
-  butSave.l_name.location.x = butSave.location.x;
-  butSave.l_name.location.y = butSave.location.y;
-  butSave.l_name.txtSize = butSave.size.y;
-  butSave.setOnClick(saveSettings);
-  
-  tabFile.bindEnt(&butSave);
-  entities.bindEnt(&butSave);
+	tabFile.bindEnt(&rgbPicker);
+	entities.bindEnt(&rgbPicker);  
 
-  // ALL
+	lockSeed.location.x = 500;
+	lockSeed.location.y =  50;
+	lockSeed.l_name.setString("Lock Seed");
+	lockSeed.useLabelName = true;
+	lockSeed.l_name.location.x = lockSeed.location.x;
+	lockSeed.l_name.location.y = lockSeed.location.y;
+	lockSeed.l_name.txtSize = lockSeed.size.y;
+	lockSeed.l_name.alignment = ALIGN_RIGHT;
+	lockSeed.setOnClick(toggleSeed);
 
-  butLoadAll.location.x = 598;
-  butLoadAll.location.y = 50;
-  butLoadAll.l_name.setString("All");
-  butLoadAll.useLabelName = true;
-  butLoadAll.l_name.alignment = ALIGN_LEFT;
-  butLoadAll.l_name.location.x = butLoadAll.location.x + butLoadAll.size.x;
-  butLoadAll.l_name.location.y = butLoadAll.location.y;
-  butLoadAll.l_name.txtSize = butLoadAll.size.y;
-  butLoadAll.setOnClick(loadAllSettings);
-  
-  tabFile.bindEnt(&butLoadAll);
-  entities.bindEnt(&butLoadAll);
-  
-  butSaveAll.location.x = 598;
-  butSaveAll.location.y = 25;
-  butSaveAll.l_name.setString("All");
-  butSaveAll.useLabelName = true;
-  butSaveAll.l_name.alignment = ALIGN_LEFT;
-  butSaveAll.l_name.location.x = butSaveAll.location.x + butSaveAll.size.x;
-  butSaveAll.l_name.location.y = butSaveAll.location.y;
-  butSaveAll.l_name.txtSize = butSaveAll.size.y;
-  butSaveAll.setOnClick(saveAllSettings);
-  
-  tabFile.bindEnt(&butSaveAll);
-  entities.bindEnt(&butSaveAll);
-  
-  // Dynamics #1
+	tabFile.bindEnt(&lockSeed);
+	entities.bindEnt(&lockSeed);
 
-  // Number of Particles
+	runOnce.location.x = 500;
+	runOnce.location.y =  25;
+	runOnce.l_name.setString("Continuous");
+	runOnce.useLabelName = true;
+	runOnce.l_name.location.x = runOnce.location.x;
+	runOnce.l_name.location.y = runOnce.location.y;
+	runOnce.l_name.txtSize = runOnce.size.y;
+	runOnce.l_name.alignment = ALIGN_RIGHT;
+	runOnce.setOnClick(toggleOnce);
+
+	tabFile.bindEnt(&runOnce);
+	entities.bindEnt(&runOnce);
+  
+	butShowPlayer.location.x = 580;
+	butShowPlayer.location.y = 75;
+	butShowPlayer.l_name.setString("Show Player");
+	butShowPlayer.useLabelName = true;
+	butShowPlayer.l_name.location.x = butShowPlayer.location.x;
+	butShowPlayer.l_name.location.y = butShowPlayer.location.y;
+	butShowPlayer.l_name.txtSize = butShowPlayer.size.y;
+	butShowPlayer.setOnClick(togglePlayerVis);
+  
+	tabFile.bindEnt(&butShowPlayer);
+	entities.bindEnt(&butShowPlayer);
+  
+	firework.location.x = 315;
+	firework.location.y = 23;
+	firework.size.y = 10;
+	firework.l_name.setString("Experimental Firework Mode: OFF");
+	firework.useLabelName = true;
+	firework.l_name.location.x = firework.location.x;
+	firework.l_name.location.y = firework.location.y;
+	firework.l_name.txtSize = firework.size.y;
+	firework.setOnClick(toggleFirework);
+  
+	tabFile.bindEnt(&firework);
+	entities.bindEnt(&firework);
+  
+	butLoad.location.x = 580;
+	butLoad.location.y = 50;
+	butLoad.l_name.setString("Load");
+	butLoad.useLabelName = true;
+	butLoad.l_name.location.x = butLoad.location.x;
+	butLoad.l_name.location.y = butLoad.location.y;
+	butLoad.l_name.txtSize = butLoad.size.y;
+	butLoad.setOnClick(loadSettings);
+  
+	tabFile.bindEnt(&butLoad);
+	entities.bindEnt(&butLoad);
+  
+	butSave.location.x = 580;
+	butSave.location.y = 25;
+	butSave.l_name.setString("Save");
+	butSave.useLabelName = true;
+	butSave.l_name.location.x = butSave.location.x;
+	butSave.l_name.location.y = butSave.location.y;
+	butSave.l_name.txtSize = butSave.size.y;
+	butSave.setOnClick(saveSettings);
+  
+	tabFile.bindEnt(&butSave);
+	entities.bindEnt(&butSave);
+
+	// ALL
+
+	butLoadAll.location.x = 598;
+	butLoadAll.location.y = 50;
+	butLoadAll.l_name.setString("All");
+	butLoadAll.useLabelName = true;
+	butLoadAll.l_name.alignment = ALIGN_LEFT;
+	butLoadAll.l_name.location.x = butLoadAll.location.x + butLoadAll.size.x;
+	butLoadAll.l_name.location.y = butLoadAll.location.y;
+	butLoadAll.l_name.txtSize = butLoadAll.size.y;
+	butLoadAll.setOnClick(loadAllSettings);
+  
+	tabFile.bindEnt(&butLoadAll);
+	entities.bindEnt(&butLoadAll);
+  
+	butSaveAll.location.x = 598;
+	butSaveAll.location.y = 25;
+	butSaveAll.l_name.setString("All");
+	butSaveAll.useLabelName = true;
+	butSaveAll.l_name.alignment = ALIGN_LEFT;
+	butSaveAll.l_name.location.x = butSaveAll.location.x + butSaveAll.size.x;
+	butSaveAll.l_name.location.y = butSaveAll.location.y;
+	butSaveAll.l_name.txtSize = butSaveAll.size.y;
+	butSaveAll.setOnClick(saveAllSettings);
+  
+	tabFile.bindEnt(&butSaveAll);
+	entities.bindEnt(&butSaveAll);
+  
+	// Dynamics #1
+
+	// Number of Particles
   
   
-  sliderNP.location.x = 100;
-  sliderNP.location.y = 100;
-  sliderNP.size.x = 200;
-  sliderNP.setBounds(1,1000);
-  sliderNP.setValue(systems[activePS].ps.numParticles);
-  sliderNP.setOnChange( oc1 );
-  sliderNP.setLabelName("# Particles");
+	sliderNP.location.x = 100;
+	sliderNP.location.y = 100;
+	sliderNP.size.x = 200;
+	sliderNP.setBounds(1,1000);
+	sliderNP.setValue(systems[activePS].ps.numParticles);
+	sliderNP.setOnChange( oc1 );
+	sliderNP.setLabelName("# Particles");
   
-  sliderNP.l_name.location.x = sliderNP.location.x;
-  sliderNP.l_name.location.y = sliderNP.location.y;
-  sliderNP.l_name.txtSize = sliderNP.size.y;
-  sliderNP.useLabelName = true;
-    
-  sliderNP.l_value.location.x = sliderNP.location.x+sliderNP.size.x;
-  sliderNP.l_value.location.y = sliderNP.location.y;
-  sliderNP.l_value.txtSize = sliderNP.size.y;
-  sliderNP.useLabelValue = true;  
+	sliderNP.l_name.location.x = sliderNP.location.x;
+	sliderNP.l_name.location.y = sliderNP.location.y;
+	sliderNP.l_name.txtSize = sliderNP.size.y;
+	sliderNP.useLabelName = true;
+	
+	sliderNP.l_value.location.x = sliderNP.location.x+sliderNP.size.x;
+	sliderNP.l_value.location.y = sliderNP.location.y;
+	sliderNP.l_value.txtSize = sliderNP.size.y;
+	sliderNP.useLabelValue = true;  
   
-  sliderNP.setType(TYPE_INT);
+	sliderNP.setType(TYPE_INT);
    
-  currentTab = tabFile.setActive(true);
+	currentTab = tabFile.setActive(true);
   
-  tabDyn1.bindEnt(&sliderNP);
+	tabDyn1.bindEnt(&sliderNP);
   
-  // Particle Size
+	// Particle Size
   
-  sliderPSize.location.x = 375;
-  sliderPSize.location.y = 25;
-  sliderPSize.size.x = 200;
-  sliderPSize.setBounds(1,128);
-  sliderPSize.setValue( (int) systems[activePS].ps.getSize());
-  sliderPSize.setOnChange(pSizeChange);
-  sliderPSize.setLabelName("Size");
+	sliderPSize.location.x = 375;
+	sliderPSize.location.y = 25;
+	sliderPSize.size.x = 200;
+	sliderPSize.setBounds(1,128);
+	sliderPSize.setValue( (int) systems[activePS].ps.getSize());
+	sliderPSize.setOnChange(pSizeChange);
+	sliderPSize.setLabelName("Size");
   
-  sliderPSize.l_name.location.x = sliderPSize.location.x;
-  sliderPSize.l_name.location.y = sliderPSize.location.y;
-  sliderPSize.l_name.txtSize = sliderPSize.size.y;
-  sliderPSize.useLabelName = true;
+	sliderPSize.l_name.location.x = sliderPSize.location.x;
+	sliderPSize.l_name.location.y = sliderPSize.location.y;
+	sliderPSize.l_name.txtSize = sliderPSize.size.y;
+	sliderPSize.useLabelName = true;
   
-  sliderPSize.l_value.location.x = sliderPSize.location.x + sliderPSize.size.x;
-  sliderPSize.l_value.location.y = sliderPSize.location.y;
-  sliderPSize.l_value.txtSize = sliderPSize.size.y;
-  sliderPSize.useLabelValue = true;
+	sliderPSize.l_value.location.x = sliderPSize.location.x + sliderPSize.size.x;
+	sliderPSize.l_value.location.y = sliderPSize.location.y;
+	sliderPSize.l_value.txtSize = sliderPSize.size.y;
+	sliderPSize.useLabelValue = true;
   
-  tabDyn1.bindEnt(&sliderPSize);
+	tabDyn1.bindEnt(&sliderPSize);
   
-  // Height
+	// Height
   
-  sliderHeight.location.x = 70;
-  sliderHeight.location.y = 75;
-  sliderHeight.size.x = 140;
-  sliderHeight.setBounds(0,1024);
-  sliderHeight.setValue((int)systems[activePS].ps.getHeight());
-  sliderHeight.setOnChange(heightChange);
-  sliderHeight.setLabelName("Height");
+	sliderHeight.location.x = 70;
+	sliderHeight.location.y = 75;
+	sliderHeight.size.x = 140;
+	sliderHeight.setBounds(0,1024);
+	sliderHeight.setValue((int)systems[activePS].ps.getHeight());
+	sliderHeight.setOnChange(heightChange);
+	sliderHeight.setLabelName("Height");
   
-  sliderHeight.l_name.location.x = sliderHeight.location.x;
-  sliderHeight.l_name.location.y = sliderHeight.location.y;
-  sliderHeight.l_name.txtSize = sliderHeight.size.y;
-  sliderHeight.useLabelName = true;
+	sliderHeight.l_name.location.x = sliderHeight.location.x;
+	sliderHeight.l_name.location.y = sliderHeight.location.y;
+	sliderHeight.l_name.txtSize = sliderHeight.size.y;
+	sliderHeight.useLabelName = true;
   
-  sliderHeight.l_value.location.x = sliderHeight.location.x + sliderHeight.size.x;
-  sliderHeight.l_value.location.y = sliderHeight.location.y;
-  sliderHeight.l_value.txtSize = sliderHeight.size.y;
-  sliderHeight.useLabelValue = true;
+	sliderHeight.l_value.location.x = sliderHeight.location.x + sliderHeight.size.x;
+	sliderHeight.l_value.location.y = sliderHeight.location.y;
+	sliderHeight.l_value.txtSize = sliderHeight.size.y;
+	sliderHeight.useLabelValue = true;
   
-  tabDyn1.bindEnt(&sliderHeight);
+	tabDyn1.bindEnt(&sliderHeight);
   
-  // Height Variance 
-  
-  
-  
-  sliderHeightVar.location.x = 310;
-  sliderHeightVar.location.y = 75;
-  sliderHeightVar.size.x = 75;
-  sliderHeightVar.setBounds(0,1024);
-  sliderHeightVar.setValue(systems[activePS].ps.getHeightVar());
-  sliderHeightVar.setOnChange(heightVarChange);
-  sliderHeightVar.setLabelName("Var");
-  
-  sliderHeightVar.l_name.location.x = sliderHeightVar.location.x;
-  sliderHeightVar.l_name.location.y = sliderHeightVar.location.y;
-  sliderHeightVar.l_name.txtSize = sliderHeightVar.size.y;
-  sliderHeightVar.useLabelName = true;
-  
-  sliderHeightVar.l_value.location.x = sliderHeightVar.location.x + sliderHeightVar.size.x;
-  sliderHeightVar.l_value.location.y = sliderHeightVar.location.y;
-  sliderHeightVar.l_value.txtSize = sliderHeightVar.size.y;
-  sliderHeightVar.useLabelValue = true;
-  
-  //sliderHeightVar.setType(TYPE_FLOAT);
-  
-  tabDyn1.bindEnt(&sliderHeightVar);
-  
-  // Emitter Variance
+	// Height Variance 
   
   
   
-  sliderEmitterZ.location.x = 500;
-  sliderEmitterZ.location.y = 75;
-  sliderEmitterZ.size.x = 75;
-  sliderEmitterZ.setBounds(0,128);
-  sliderEmitterZ.setValue((int)(systems[activePS].ps.getEmitterZ()));
-  sliderEmitterZ.setOnChange(emitterZChange);
-  sliderEmitterZ.setLabelName("Base Var");
+	sliderHeightVar.location.x = 310;
+	sliderHeightVar.location.y = 75;
+	sliderHeightVar.size.x = 75;
+	sliderHeightVar.setBounds(0,1024);
+	sliderHeightVar.setValue(systems[activePS].ps.getHeightVar());
+	sliderHeightVar.setOnChange(heightVarChange);
+	sliderHeightVar.setLabelName("Var");
   
-  sliderEmitterZ.l_name.location.x = sliderEmitterZ.location.x;
-  sliderEmitterZ.l_name.location.y = sliderEmitterZ.location.y;
-  sliderEmitterZ.l_name.txtSize = sliderEmitterZ.size.y;
-  sliderEmitterZ.useLabelName = true;
+	sliderHeightVar.l_name.location.x = sliderHeightVar.location.x;
+	sliderHeightVar.l_name.location.y = sliderHeightVar.location.y;
+	sliderHeightVar.l_name.txtSize = sliderHeightVar.size.y;
+	sliderHeightVar.useLabelName = true;
   
-  sliderEmitterZ.l_value.location.x = sliderEmitterZ.location.x + sliderEmitterZ.size.x;
-  sliderEmitterZ.l_value.location.y = sliderEmitterZ.location.y;
-  sliderEmitterZ.l_value.txtSize = sliderEmitterZ.size.y;
-  sliderEmitterZ.useLabelValue = true;
+	sliderHeightVar.l_value.location.x = sliderHeightVar.location.x + sliderHeightVar.size.x;
+	sliderHeightVar.l_value.location.y = sliderHeightVar.location.y;
+	sliderHeightVar.l_value.txtSize = sliderHeightVar.size.y;
+	sliderHeightVar.useLabelValue = true;
   
-  //sliderEmitterZ.setType(TYPE_FLOAT);
+	//sliderHeightVar.setType(TYPE_FLOAT);
   
-  tabDyn1.bindEnt(&sliderEmitterZ);
+	tabDyn1.bindEnt(&sliderHeightVar);
   
-  // Natual Height Button
-  
-  
-  butNatH.location.x = 250;
-  butNatH.location.y = 75;
-  butNatH.l_name.setString("Natural");
-  butNatH.useLabelName = true;
-  butNatH.l_name.location.x = butNatH.location.x + butNatH.size.x + 30;
-  butNatH.l_name.location.y = butNatH.location.y + butNatH.size.y;
-  butNatH.l_name.txtSize = butNatH.size.y;
-  butNatH.setOnClick(naturalHeight);
-  
-  tabDyn1.bindEnt(&butNatH);
-  
-  // Frequency Slider
+	// Emitter Variance
   
   
   
-  sliderFreq.location.x = 80;
-  sliderFreq.location.y = 50;
-  sliderFreq.size.x = 110;
-  sliderFreq.setBounds(100,10000*5,10000);
-  sliderFreq.setIntermediatePosition( sliderFreq.size.x / 2);
-  //sliderFreq.intermediateValue
-  sliderFreq.setValue((int)(10000*systems[activePS].ps.getFrequency()));
-  sliderFreq.setOnChange(frequencyChange);
-  sliderFreq.setLabelName("Frequency");
+	sliderEmitterZ.location.x = 500;
+	sliderEmitterZ.location.y = 75;
+	sliderEmitterZ.size.x = 75;
+	sliderEmitterZ.setBounds(0,128);
+	sliderEmitterZ.setValue((int)(systems[activePS].ps.getEmitterZ()));
+	sliderEmitterZ.setOnChange(emitterZChange);
+	sliderEmitterZ.setLabelName("Base Var");
   
-  sliderFreq.l_name.location.x = sliderFreq.location.x;
-  sliderFreq.l_name.location.y = sliderFreq.location.y;
-  sliderFreq.l_name.txtSize = sliderFreq.size.y;
-  sliderFreq.useLabelName = true;
+	sliderEmitterZ.l_name.location.x = sliderEmitterZ.location.x;
+	sliderEmitterZ.l_name.location.y = sliderEmitterZ.location.y;
+	sliderEmitterZ.l_name.txtSize = sliderEmitterZ.size.y;
+	sliderEmitterZ.useLabelName = true;
   
-  sliderFreq.l_value.location.x = sliderFreq.location.x + sliderFreq.size.x;
-  sliderFreq.l_value.location.y = sliderFreq.location.y;
-  sliderFreq.l_value.txtSize = sliderFreq.size.y;
-  sliderFreq.useLabelValue = true;  
+	sliderEmitterZ.l_value.location.x = sliderEmitterZ.location.x + sliderEmitterZ.size.x;
+	sliderEmitterZ.l_value.location.y = sliderEmitterZ.location.y;
+	sliderEmitterZ.l_value.txtSize = sliderEmitterZ.size.y;
+	sliderEmitterZ.useLabelValue = true;
   
-  sliderFreq.setType(TYPE_FLOAT);
+	//sliderEmitterZ.setType(TYPE_FLOAT);
   
-  tabDyn1.bindEnt(&sliderFreq);
+	tabDyn1.bindEnt(&sliderEmitterZ);
   
-  // Natual Freq Button
+	// Natual Height Button
   
   
-  butNatF.location.x = 250;
-  butNatF.location.y = 50;
-  butNatF.l_name.setString("Natural");
-  butNatF.useLabelName = true;
-  butNatF.l_name.location.x = butNatF.location.x + butNatF.size.x + 30;
-  butNatF.l_name.location.y = butNatF.location.y + butNatF.size.y;
-  butNatF.l_name.txtSize = butNatF.size.y;
-  butNatF.setOnClick(naturalFreq);
+	butNatH.location.x = 250;
+	butNatH.location.y = 75;
+	butNatH.l_name.setString("Natural");
+	butNatH.useLabelName = true;
+	butNatH.l_name.location.x = butNatH.location.x + butNatH.size.x + 30;
+	butNatH.l_name.location.y = butNatH.location.y + butNatH.size.y;
+	butNatH.l_name.txtSize = butNatH.size.y;
+	butNatH.setOnClick(naturalHeight);
   
-  tabDyn1.bindEnt(&butNatF);
+	tabDyn1.bindEnt(&butNatH);
   
-  // Phase Grouping Slider
+	// Frequency Slider
   
   
   
-  sliderPG.location.x = 400;
-  sliderPG.location.y = 50;
-  sliderPG.size.x = 65;
-  sliderPG.setBounds(0,10000*5,10000);
-  sliderPG.setIntermediatePosition( sliderPG.size.x / 2);
-  sliderPG.setValue((int)(10000*systems[activePS].ps.getPhaseGrouping()));
-  sliderPG.setOnChange(phaseGChange);
-  sliderPG.setLabelName("Phase Grouping");
+	sliderFreq.location.x = 80;
+	sliderFreq.location.y = 50;
+	sliderFreq.size.x = 110;
+	sliderFreq.setBounds(100,10000*5,10000);
+	sliderFreq.setIntermediatePosition( sliderFreq.size.x / 2);
+	//sliderFreq.intermediateValue
+	sliderFreq.setValue((int)(10000*systems[activePS].ps.getFrequency()));
+	sliderFreq.setOnChange(frequencyChange);
+	sliderFreq.setLabelName("Frequency");
   
-  sliderPG.l_name.location.x = sliderPG.location.x;
-  sliderPG.l_name.location.y = sliderPG.location.y;
-  sliderPG.l_name.txtSize = sliderPG.size.y;
-  sliderPG.useLabelName = true;
+	sliderFreq.l_name.location.x = sliderFreq.location.x;
+	sliderFreq.l_name.location.y = sliderFreq.location.y;
+	sliderFreq.l_name.txtSize = sliderFreq.size.y;
+	sliderFreq.useLabelName = true;
   
-  sliderPG.l_value.location.x = sliderPG.location.x + sliderPG.size.x;
-  sliderPG.l_value.location.y = sliderPG.location.y;
-  sliderPG.l_value.txtSize = sliderPG.size.y;
-  sliderPG.useLabelValue = true;  
+	sliderFreq.l_value.location.x = sliderFreq.location.x + sliderFreq.size.x;
+	sliderFreq.l_value.location.y = sliderFreq.location.y;
+	sliderFreq.l_value.txtSize = sliderFreq.size.y;
+	sliderFreq.useLabelValue = true;  
   
-  sliderPG.setType(TYPE_FLOAT);
+	sliderFreq.setType(TYPE_FLOAT);
   
-  tabDyn1.bindEnt(&sliderPG);
+	tabDyn1.bindEnt(&sliderFreq);
+  
+	// Natual Freq Button
+  
+  
+	butNatF.location.x = 250;
+	butNatF.location.y = 50;
+	butNatF.l_name.setString("Natural");
+	butNatF.useLabelName = true;
+	butNatF.l_name.location.x = butNatF.location.x + butNatF.size.x + 30;
+	butNatF.l_name.location.y = butNatF.location.y + butNatF.size.y;
+	butNatF.l_name.txtSize = butNatF.size.y;
+	butNatF.setOnClick(naturalFreq);
+  
+	tabDyn1.bindEnt(&butNatF);
+  
+	// Phase Grouping Slider
+  
+  
+  
+	sliderPG.location.x = 400;
+	sliderPG.location.y = 50;
+	sliderPG.size.x = 65;
+	sliderPG.setBounds(0,10000*5,10000);
+	sliderPG.setIntermediatePosition( sliderPG.size.x / 2);
+	sliderPG.setValue((int)(10000*systems[activePS].ps.getPhaseGrouping()));
+	sliderPG.setOnChange(phaseGChange);
+	sliderPG.setLabelName("Phase Grouping");
+  
+	sliderPG.l_name.location.x = sliderPG.location.x;
+	sliderPG.l_name.location.y = sliderPG.location.y;
+	sliderPG.l_name.txtSize = sliderPG.size.y;
+	sliderPG.useLabelName = true;
+  
+	sliderPG.l_value.location.x = sliderPG.location.x + sliderPG.size.x;
+	sliderPG.l_value.location.y = sliderPG.location.y;
+	sliderPG.l_value.txtSize = sliderPG.size.y;
+	sliderPG.useLabelValue = true;  
+  
+	sliderPG.setType(TYPE_FLOAT);
+  
+	tabDyn1.bindEnt(&sliderPG);
 
-  sliderZBase.location.x = 560;
-  sliderZBase.location.y = 50;
-  sliderZBase.size.x = 30;
-  sliderZBase.setBounds(-10000,10000,0);
-  sliderZBase.setIntermediatePosition(sliderZBase.size.x/2);
-  sliderZBase.setValue((int)(10000*systems[activePS].ps.zBase));
-  sliderZBase.setOnChange(zBaseChange);
-  sliderZBase.setLabelName("zBase");
+	sliderZBase.location.x = 560;
+	sliderZBase.location.y = 50;
+	sliderZBase.size.x = 30;
+	sliderZBase.setBounds(-10000,10000,0);
+	sliderZBase.setIntermediatePosition(sliderZBase.size.x/2);
+	sliderZBase.setValue((int)(10000*systems[activePS].ps.zBase));
+	sliderZBase.setOnChange(zBaseChange);
+	sliderZBase.setLabelName("zBase");
 
-  sliderZBase.l_name.location.x = sliderZBase.location.x;
-  sliderZBase.l_name.location.y = sliderZBase.location.y;
-  sliderZBase.l_name.txtSize = sliderZBase.size.y;
-  sliderZBase.useLabelName = true;
+	sliderZBase.l_name.location.x = sliderZBase.location.x;
+	sliderZBase.l_name.location.y = sliderZBase.location.y;
+	sliderZBase.l_name.txtSize = sliderZBase.size.y;
+	sliderZBase.useLabelName = true;
 
-  sliderZBase.l_value.location.x = sliderZBase.location.x + sliderZBase.size.x;
-  sliderZBase.l_value.location.y = sliderZBase.location.y;
-  sliderZBase.l_value.txtSize = sliderZBase.size.y;
-  sliderZBase.useLabelValue = true; 
+	sliderZBase.l_value.location.x = sliderZBase.location.x + sliderZBase.size.x;
+	sliderZBase.l_value.location.y = sliderZBase.location.y;
+	sliderZBase.l_value.txtSize = sliderZBase.size.y;
+	sliderZBase.useLabelValue = true; 
 
-  sliderZBase.setType(TYPE_FLOAT);
-  tabDyn1.bindEnt(&sliderZBase);
+	sliderZBase.setType(TYPE_FLOAT);
+	tabDyn1.bindEnt(&sliderZBase);
 
   
-  // Master Phase Slider
+	// Master Phase Slider
   
   
   
-  sliderMasterPhase.location.x = 100;
-  sliderMasterPhase.location.y = 25;
-  sliderMasterPhase.size.x = 150;
-  sliderMasterPhase.setBounds(0,10000);
-  //sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
-  sliderMasterPhase.setValue((int)(10000*systems[activePS].ps.getMasterPhase()));
-  sliderMasterPhase.setOnChange(masterPhaseChange);
-  sliderMasterPhase.setLabelName("Master Phase");
+	sliderMasterPhase.location.x = 100;
+	sliderMasterPhase.location.y = 25;
+	sliderMasterPhase.size.x = 150;
+	sliderMasterPhase.setBounds(0,10000);
+	//sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
+	sliderMasterPhase.setValue((int)(10000*systems[activePS].ps.getMasterPhase()));
+	sliderMasterPhase.setOnChange(masterPhaseChange);
+	sliderMasterPhase.setLabelName("Master Phase");
   
-  sliderMasterPhase.l_name.location.x = sliderMasterPhase.location.x;
-  sliderMasterPhase.l_name.location.y = sliderMasterPhase.location.y;
-  sliderMasterPhase.l_name.txtSize = sliderMasterPhase.size.y;
-  sliderMasterPhase.useLabelName = true;
+	sliderMasterPhase.l_name.location.x = sliderMasterPhase.location.x;
+	sliderMasterPhase.l_name.location.y = sliderMasterPhase.location.y;
+	sliderMasterPhase.l_name.txtSize = sliderMasterPhase.size.y;
+	sliderMasterPhase.useLabelName = true;
   
-  sliderMasterPhase.l_value.location.x = sliderMasterPhase.location.x + sliderMasterPhase.size.x;
-  sliderMasterPhase.l_value.location.y = sliderMasterPhase.location.y;
-  sliderMasterPhase.l_value.txtSize = sliderMasterPhase.size.y;
-  sliderMasterPhase.useLabelValue = true;  
+	sliderMasterPhase.l_value.location.x = sliderMasterPhase.location.x + sliderMasterPhase.size.x;
+	sliderMasterPhase.l_value.location.y = sliderMasterPhase.location.y;
+	sliderMasterPhase.l_value.txtSize = sliderMasterPhase.size.y;
+	sliderMasterPhase.useLabelValue = true;  
   
-  sliderMasterPhase.setType(TYPE_FLOAT);
+	sliderMasterPhase.setType(TYPE_FLOAT);
   
-  tabDyn1.bindEnt(&sliderMasterPhase);
+	tabDyn1.bindEnt(&sliderMasterPhase);
   
-  // Z WaveForm List Box
+	// Z WaveForm List Box
   
-  //listBox listZWave;
-  listZWave.location.x = 420;
-  listZWave.location.y = 100;
-  listZWave.createItems(5);
-  listZWave.fillItem(0,"SINE");
-  listZWave.fillItem(1,"SQUARE");
-  listZWave.fillItem(2,"TRIANGLE");
-  listZWave.fillItem(3,"SAWTOOTH");
-  listZWave.fillItem(4,"INVERSE SAWTOOTH");
-  listZWave.setOnChange(zWaveChange);
-  listZWave.setSelected(systems[activePS].ps.getZWaveform());
+	//listBox listZWave;
+	listZWave.location.x = 420;
+	listZWave.location.y = 100;
+	listZWave.createItems(5);
+	listZWave.fillItem(0,"SINE");
+	listZWave.fillItem(1,"SQUARE");
+	listZWave.fillItem(2,"TRIANGLE");
+	listZWave.fillItem(3,"SAWTOOTH");
+	listZWave.fillItem(4,"INVERSE SAWTOOTH");
+	listZWave.setOnChange(zWaveChange);
+	listZWave.setSelected(systems[activePS].ps.getZWaveform());
   
-  listZWave.l_name.setString("Z Waveform");
-  listZWave.useLabelName = true;
-  listZWave.l_name.location.x = listZWave.location.x;
-  listZWave.l_name.location.y = listZWave.location.y;
-  listZWave.l_name.txtSize = listZWave.size.y;
+	listZWave.l_name.setString("Z Waveform");
+	listZWave.useLabelName = true;
+	listZWave.l_name.location.x = listZWave.location.x;
+	listZWave.l_name.location.y = listZWave.location.y;
+	listZWave.l_name.txtSize = listZWave.size.y;
   
-  tabDyn1.bindEnt(&listZWave);
+	tabDyn1.bindEnt(&listZWave);
   
   
-  // Dynamics 2 Tab
+	// Dynamics 2 Tab
   
-  // Radius
+	// Radius
   
   
   
-  sliderRadius.location.x = 70;
-  sliderRadius.location.y = 100;
-  sliderRadius.size.x = 140;
-  sliderRadius.setBounds(0,1024);
-  sliderRadius.setValue((int)systems[activePS].ps.getRadius());
-  sliderRadius.setOnChange(radiusChange);
-  sliderRadius.setLabelName("Radius");
+	sliderRadius.location.x = 70;
+	sliderRadius.location.y = 100;
+	sliderRadius.size.x = 140;
+	sliderRadius.setBounds(0,1024);
+	sliderRadius.setValue((int)systems[activePS].ps.getRadius());
+	sliderRadius.setOnChange(radiusChange);
+	sliderRadius.setLabelName("Radius");
   
-  sliderRadius.l_name.location.x = sliderRadius.location.x;
-  sliderRadius.l_name.location.y = sliderRadius.location.y;
-  sliderRadius.l_name.txtSize = sliderRadius.size.y;
-  sliderRadius.useLabelName = true;
+	sliderRadius.l_name.location.x = sliderRadius.location.x;
+	sliderRadius.l_name.location.y = sliderRadius.location.y;
+	sliderRadius.l_name.txtSize = sliderRadius.size.y;
+	sliderRadius.useLabelName = true;
   
-  sliderRadius.l_value.location.x = sliderRadius.location.x + sliderRadius.size.x;
-  sliderRadius.l_value.location.y = sliderRadius.location.y;
-  sliderRadius.l_value.txtSize = sliderRadius.size.y;
-  sliderRadius.useLabelValue = true;
+	sliderRadius.l_value.location.x = sliderRadius.location.x + sliderRadius.size.x;
+	sliderRadius.l_value.location.y = sliderRadius.location.y;
+	sliderRadius.l_value.txtSize = sliderRadius.size.y;
+	sliderRadius.useLabelValue = true;
   
-  tabDyn2.bindEnt(&sliderRadius);
+	tabDyn2.bindEnt(&sliderRadius);
   
-  // Radius Variance 
+	// Radius Variance 
   
   
   
-  sliderRadiusVar.location.x = 310;
-  sliderRadiusVar.location.y = 100;
-  sliderRadiusVar.size.x = 75;
-  sliderRadiusVar.setBounds(0,1024);
-  sliderRadiusVar.setValue(systems[activePS].ps.getRadiusVar());
-  sliderRadiusVar.setOnChange(radiusVarChange);
-  sliderRadiusVar.setLabelName("Var");
+	sliderRadiusVar.location.x = 310;
+	sliderRadiusVar.location.y = 100;
+	sliderRadiusVar.size.x = 75;
+	sliderRadiusVar.setBounds(0,1024);
+	sliderRadiusVar.setValue(systems[activePS].ps.getRadiusVar());
+	sliderRadiusVar.setOnChange( radiusVarChange);
+	sliderRadiusVar.setLabelName("Var");
   
-  sliderRadiusVar.l_name.location.x = sliderRadiusVar.location.x;
-  sliderRadiusVar.l_name.location.y = sliderRadiusVar.location.y;
-  sliderRadiusVar.l_name.txtSize = sliderRadiusVar.size.y;
-  sliderRadiusVar.useLabelName = true;
+	sliderRadiusVar.l_name.location.x = sliderRadiusVar.location.x;
+	sliderRadiusVar.l_name.location.y = sliderRadiusVar.location.y;
+	sliderRadiusVar.l_name.txtSize = sliderRadiusVar.size.y;
+	sliderRadiusVar.useLabelName = true;
   
-  sliderRadiusVar.l_value.location.x = sliderRadiusVar.location.x + sliderRadiusVar.size.x;
-  sliderRadiusVar.l_value.location.y = sliderRadiusVar.location.y;
-  sliderRadiusVar.l_value.txtSize = sliderRadiusVar.size.y;
-  sliderRadiusVar.useLabelValue = true;
+	sliderRadiusVar.l_value.location.x = sliderRadiusVar.location.x + sliderRadiusVar.size.x;
+	sliderRadiusVar.l_value.location.y = sliderRadiusVar.location.y;
+	sliderRadiusVar.l_value.txtSize = sliderRadiusVar.size.y;
+	sliderRadiusVar.useLabelValue = true;
   
-  //sliderRadiusVar.setType(TYPE_FLOAT);
+	//sliderRadiusVar.setType(TYPE_FLOAT);
   
-  tabDyn2.bindEnt(&sliderRadiusVar);
+	tabDyn2.bindEnt(&sliderRadiusVar);
   
-  // Emitter Variance
+	// Emitter Variance
   
   
   
-  sliderEmitterXY.location.x = 500;
-  sliderEmitterXY.location.y = 100;
-  sliderEmitterXY.size.x = 75;
-  sliderEmitterXY.setBounds(0,128);
-  sliderEmitterXY.setValue((int)(systems[activePS].ps.getEmitterXY()));
-  sliderEmitterXY.setOnChange(emitterXYChange);
-  sliderEmitterXY.setLabelName("Base Var");
+	sliderEmitterXY.location.x = 500;
+	sliderEmitterXY.location.y = 100;
+	sliderEmitterXY.size.x = 75;
+	sliderEmitterXY.setBounds(0,128);
+	sliderEmitterXY.setValue((int)(systems[activePS].ps.getEmitterXY()));
+	sliderEmitterXY.setOnChange(emitterXYChange);
+	sliderEmitterXY.setLabelName("Base Var");
   
-  sliderEmitterXY.l_name.location.x = sliderEmitterXY.location.x;
-  sliderEmitterXY.l_name.location.y = sliderEmitterXY.location.y;
-  sliderEmitterXY.l_name.txtSize = sliderEmitterXY.size.y;
-  sliderEmitterXY.useLabelName = true;
+	sliderEmitterXY.l_name.location.x = sliderEmitterXY.location.x;
+	sliderEmitterXY.l_name.location.y = sliderEmitterXY.location.y;
+	sliderEmitterXY.l_name.txtSize = sliderEmitterXY.size.y;
+	sliderEmitterXY.useLabelName = true;
   
-  sliderEmitterXY.l_value.location.x = sliderEmitterXY.location.x + sliderEmitterXY.size.x;
-  sliderEmitterXY.l_value.location.y = sliderEmitterXY.location.y;
-  sliderEmitterXY.l_value.txtSize = sliderEmitterXY.size.y;
-  sliderEmitterXY.useLabelValue = true;
+	sliderEmitterXY.l_value.location.x = sliderEmitterXY.location.x + sliderEmitterXY.size.x;
+	sliderEmitterXY.l_value.location.y = sliderEmitterXY.location.y;
+	sliderEmitterXY.l_value.txtSize = sliderEmitterXY.size.y;
+	sliderEmitterXY.useLabelValue = true;
   
-  //sliderEmitterZ.setType(TYPE_FLOAT);
+	//sliderEmitterZ.setType(TYPE_FLOAT);
   
-  tabDyn2.bindEnt(&sliderEmitterXY);
+	tabDyn2.bindEnt(&sliderEmitterXY);
   
-  //sliderStartAngle
+	//sliderStartAngle
   
-  sliderStartAngle.location.x = 92;
-  sliderStartAngle.location.y = 33;
-  sliderStartAngle.size.x = 110;
-  sliderStartAngle.setBounds(0,358);
-  sliderStartAngle.setValue((int)(systems[activePS].ps.getStartAngle()));
-  sliderStartAngle.setOnChange(startAngleChange);
-  sliderStartAngle.setLabelName("Start Angle");
+	sliderStartAngle.location.x = 92;
+	sliderStartAngle.location.y = 33;
+	sliderStartAngle.size.x = 110;
+	sliderStartAngle.setBounds(0,358);
+	sliderStartAngle.setValue((int)(systems[activePS].ps.getStartAngle()));
+	sliderStartAngle.setOnChange(startAngleChange);
+	sliderStartAngle.setLabelName("Start Angle");
   
-  sliderStartAngle.l_name.location.x = sliderStartAngle.location.x;
-  sliderStartAngle.l_name.location.y = sliderStartAngle.location.y;
-  sliderStartAngle.l_name.txtSize = sliderStartAngle.size.y;
-  sliderStartAngle.useLabelName = true;
+	sliderStartAngle.l_name.location.x = sliderStartAngle.location.x;
+	sliderStartAngle.l_name.location.y = sliderStartAngle.location.y;
+	sliderStartAngle.l_name.txtSize = sliderStartAngle.size.y;
+	sliderStartAngle.useLabelName = true;
   
-  sliderStartAngle.l_value.location.x = sliderStartAngle.location.x + sliderStartAngle.size.x;
-  sliderStartAngle.l_value.location.y = sliderStartAngle.location.y;
-  sliderStartAngle.l_value.txtSize = sliderStartAngle.size.y;
-  sliderStartAngle.useLabelValue = true;
+	sliderStartAngle.l_value.location.x = sliderStartAngle.location.x + sliderStartAngle.size.x;
+	sliderStartAngle.l_value.location.y = sliderStartAngle.location.y;
+	sliderStartAngle.l_value.txtSize = sliderStartAngle.size.y;
+	sliderStartAngle.useLabelValue = true;
   
-  tabDyn2.bindEnt(&sliderStartAngle);
+	tabDyn2.bindEnt(&sliderStartAngle);
   
-  //sliderEndAngle
+	//sliderEndAngle
   
-  sliderEndAngle.location.x = 305;
-  sliderEndAngle.location.y = 33;
-  sliderEndAngle.size.x = 110;
-  sliderEndAngle.setBounds(1,359);
-  sliderEndAngle.setValue((int)(systems[activePS].ps.getEndAngle()));
-  sliderEndAngle.setOnChange(endAngleChange);
-  sliderEndAngle.setLabelName("End Angle");
+	sliderEndAngle.location.x = 305;
+	sliderEndAngle.location.y = 33;
+	sliderEndAngle.size.x = 110;
+	sliderEndAngle.setBounds(1,359);
+	sliderEndAngle.setValue((int)(systems[activePS].ps.getEndAngle()));
+	sliderEndAngle.setOnChange(endAngleChange);
+	sliderEndAngle.setLabelName("End Angle");
   
-  sliderEndAngle.l_name.location.x = sliderEndAngle.location.x;
-  sliderEndAngle.l_name.location.y = sliderEndAngle.location.y;
-  sliderEndAngle.l_name.txtSize = sliderEndAngle.size.y;
-  sliderEndAngle.useLabelName = true;
+	sliderEndAngle.l_name.location.x = sliderEndAngle.location.x;
+	sliderEndAngle.l_name.location.y = sliderEndAngle.location.y;
+	sliderEndAngle.l_name.txtSize = sliderEndAngle.size.y;
+	sliderEndAngle.useLabelName = true;
   
-  sliderEndAngle.l_value.location.x = sliderEndAngle.location.x + sliderEndAngle.size.x;
-  sliderEndAngle.l_value.location.y = sliderEndAngle.location.y;
-  sliderEndAngle.l_value.txtSize = sliderEndAngle.size.y;
-  sliderEndAngle.useLabelValue = true;
+	sliderEndAngle.l_value.location.x = sliderEndAngle.location.x + sliderEndAngle.size.x;
+	sliderEndAngle.l_value.location.y = sliderEndAngle.location.y;
+	sliderEndAngle.l_value.txtSize = sliderEndAngle.size.y;
+	sliderEndAngle.useLabelValue = true;
   
-  tabDyn2.bindEnt(&sliderEndAngle);
+	tabDyn2.bindEnt(&sliderEndAngle);
   
-  // XY WAVEFORM
-  // Radius Variance 
+	// XY WAVEFORM
+	// Radius Variance 
   
   
   
-  sliderAngleGrouping.location.x = 515;
-  sliderAngleGrouping.location.y = 33;
-  sliderAngleGrouping.size.x = 70;
-  sliderAngleGrouping.setBounds(0,10000);
-  sliderAngleGrouping.setValue((int)(10000*systems[activePS].ps.getAngleGrouping()));
-  sliderAngleGrouping.setOnChange(angleGroupingChanged);
-  sliderAngleGrouping.setLabelName("Grouping");
+	sliderAngleGrouping.location.x = 515;
+	sliderAngleGrouping.location.y = 33;
+	sliderAngleGrouping.size.x = 70;
+	sliderAngleGrouping.setBounds(0,10000);
+	sliderAngleGrouping.setValue((int)(10000*systems[activePS].ps.getAngleGrouping()));
+	sliderAngleGrouping.setOnChange(angleGroupingChanged);
+	sliderAngleGrouping.setLabelName("Grouping");
   
-  sliderAngleGrouping.l_name.location.x = sliderAngleGrouping.location.x;
-  sliderAngleGrouping.l_name.location.y = sliderAngleGrouping.location.y;
-  sliderAngleGrouping.l_name.txtSize = sliderAngleGrouping.size.y;
-  sliderAngleGrouping.useLabelName = true;
+	sliderAngleGrouping.l_name.location.x = sliderAngleGrouping.location.x;
+	sliderAngleGrouping.l_name.location.y = sliderAngleGrouping.location.y;
+	sliderAngleGrouping.l_name.txtSize = sliderAngleGrouping.size.y;
+	sliderAngleGrouping.useLabelName = true;
   
-  sliderAngleGrouping.l_value.location.x = sliderAngleGrouping.location.x + sliderAngleGrouping.size.x;
-  sliderAngleGrouping.l_value.location.y = sliderAngleGrouping.location.y;
-  sliderAngleGrouping.l_value.txtSize = sliderAngleGrouping.size.y;
-  sliderAngleGrouping.useLabelValue = true;
+	sliderAngleGrouping.l_value.location.x = sliderAngleGrouping.location.x + sliderAngleGrouping.size.x;
+	sliderAngleGrouping.l_value.location.y = sliderAngleGrouping.location.y;
+	sliderAngleGrouping.l_value.txtSize = sliderAngleGrouping.size.y;
+	sliderAngleGrouping.useLabelValue = true;
   
-  sliderAngleGrouping.setType(TYPE_FLOAT);
+	sliderAngleGrouping.setType(TYPE_FLOAT);
   
-  tabDyn2.bindEnt(&sliderAngleGrouping);
+	tabDyn2.bindEnt(&sliderAngleGrouping);
   
   
-  listXYWave.location.x = 100;
-  listXYWave.location.y = 66;
-  listXYWave.createItems(5);
-  listXYWave.fillItem(0,"SINE");
-  listXYWave.fillItem(1,"SQUARE");
-  listXYWave.fillItem(2,"TRIANGLE");
-  listXYWave.fillItem(3,"SAWTOOTH");
-  listXYWave.fillItem(4,"INVERSE SAWTOOTH");
-  listXYWave.setOnChange(xyWaveChange);
-  listXYWave.setSelected(systems[activePS].ps.getXYWaveform());
+	listXYWave.location.x = 100;
+	listXYWave.location.y = 66;
+	listXYWave.createItems(5);
+	listXYWave.fillItem(0,"SINE");
+	listXYWave.fillItem(1,"SQUARE");
+	listXYWave.fillItem(2,"TRIANGLE");
+	listXYWave.fillItem(3,"SAWTOOTH");
+	listXYWave.fillItem(4,"INVERSE SAWTOOTH");
+	listXYWave.setOnChange(xyWaveChange);
+	listXYWave.setSelected(systems[activePS].ps.getXYWaveform());
   
-  listXYWave.l_name.setString("X/Y Waveform");
-  listXYWave.useLabelName = true;
-  listXYWave.l_name.location.x = listXYWave.location.x;
-  listXYWave.l_name.location.y = listXYWave.location.y;
-  listXYWave.l_name.txtSize = 12;
+	listXYWave.l_name.setString("X/Y Waveform");
+	listXYWave.useLabelName = true;
+	listXYWave.l_name.location.x = listXYWave.location.x;
+	listXYWave.l_name.location.y = listXYWave.location.y;
+	listXYWave.l_name.txtSize = 12;
   
-  tabDyn2.bindEnt(&listXYWave);
+	tabDyn2.bindEnt(&listXYWave);
   
   
   
-  sliderXYPhase.location.x = 350;
-  sliderXYPhase.location.y = 66;
-  sliderXYPhase.size.x = 150;
-  sliderXYPhase.setBounds(0,10000);
-  //sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
-  sliderXYPhase.setValue((int)(10000*systems[activePS].ps.getMasterPhase()));
-  sliderXYPhase.setOnChange(xyPhaseChange);
-  sliderXYPhase.setLabelName("XY Phase");
+	sliderXYPhase.location.x = 350;
+	sliderXYPhase.location.y = 66;
+	sliderXYPhase.size.x = 150;
+	sliderXYPhase.setBounds(0,10000);
+	//sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
+	sliderXYPhase.setValue((int)(10000*systems[activePS].ps.getMasterPhase()));
+	sliderXYPhase.setOnChange(xyPhaseChange);
+	sliderXYPhase.setLabelName("XY Phase");
   
-  sliderXYPhase.l_name.location.x = sliderXYPhase.location.x;
-  sliderXYPhase.l_name.location.y = sliderXYPhase.location.y;
-  sliderXYPhase.l_name.txtSize = sliderXYPhase.size.y;
-  sliderXYPhase.useLabelName = true;
+	sliderXYPhase.l_name.location.x = sliderXYPhase.location.x;
+	sliderXYPhase.l_name.location.y = sliderXYPhase.location.y;
+	sliderXYPhase.l_name.txtSize = sliderXYPhase.size.y;
+	sliderXYPhase.useLabelName = true;
   
-  sliderXYPhase.l_value.location.x = sliderXYPhase.location.x + sliderXYPhase.size.x;
-  sliderXYPhase.l_value.location.y = sliderXYPhase.location.y;
-  sliderXYPhase.l_value.txtSize = sliderXYPhase.size.y;
-  sliderXYPhase.useLabelValue = true;  
+	sliderXYPhase.l_value.location.x = sliderXYPhase.location.x + sliderXYPhase.size.x;
+	sliderXYPhase.l_value.location.y = sliderXYPhase.location.y;
+	sliderXYPhase.l_value.txtSize = sliderXYPhase.size.y;
+	sliderXYPhase.useLabelValue = true;  
   
-  sliderXYPhase.setType(TYPE_FLOAT);
+	sliderXYPhase.setType(TYPE_FLOAT);
   
-  tabDyn2.bindEnt(&sliderXYPhase);
+	tabDyn2.bindEnt(&sliderXYPhase);
   
-  // Blending Tab
+	// Blending Tab
   
-  // RGBGEN 1 slider
+	// RGBGEN 1 slider
   
   
   
-  sliderRGB1.location.x = 41;
-  sliderRGB1.location.y = 100;
-  sliderRGB1.size.x = 150;
-  sliderRGB1.setBounds(-50000,50000);
-  //sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
-  sliderRGB1.setValue((int)(10000*systems[activePS].ps.getRGB1()));
-  sliderRGB1.setOnChange(rgb1Change);
-  sliderRGB1.setLabelName("RGB1");
+	sliderRGB1.location.x = 41;
+	sliderRGB1.location.y = 100;
+	sliderRGB1.size.x = 150;
+	sliderRGB1.setBounds(-50000,50000);
+	//sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
+	sliderRGB1.setValue((int)(10000*systems[activePS].ps.getRGB1()));
+	sliderRGB1.setOnChange(rgb1Change);
+	sliderRGB1.setLabelName("RGB1");
   
-  sliderRGB1.l_name.location.x = sliderRGB1.location.x;
-  sliderRGB1.l_name.location.y = sliderRGB1.location.y;
-  sliderRGB1.l_name.txtSize = sliderRGB1.size.y;
-  sliderRGB1.useLabelName = true;
+	sliderRGB1.l_name.location.x = sliderRGB1.location.x;
+	sliderRGB1.l_name.location.y = sliderRGB1.location.y;
+	sliderRGB1.l_name.txtSize = sliderRGB1.size.y;
+	sliderRGB1.useLabelName = true;
   
-  sliderRGB1.l_value.location.x = sliderRGB1.location.x + sliderRGB1.size.x;
-  sliderRGB1.l_value.location.y = sliderRGB1.location.y;
-  sliderRGB1.l_value.txtSize = sliderRGB1.size.y;
-  sliderRGB1.useLabelValue = true;  
+	sliderRGB1.l_value.location.x = sliderRGB1.location.x + sliderRGB1.size.x;
+	sliderRGB1.l_value.location.y = sliderRGB1.location.y;
+	sliderRGB1.l_value.txtSize = sliderRGB1.size.y;
+	sliderRGB1.useLabelValue = true;  
   
-  sliderRGB1.setType(TYPE_FLOAT);
+	sliderRGB1.setType(TYPE_FLOAT);
   
-  tabBlend.bindEnt(&sliderRGB1);
+	tabBlend.bindEnt(&sliderRGB1);
 
-  // RGB 2
+	// RGB 2
   
   
   
-  sliderRGB2.location.x = 280;
-  sliderRGB2.location.y = 100;
-  sliderRGB2.size.x = 150;
-  sliderRGB2.setBounds(-50000,50000);
-  //sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
-  sliderRGB2.setValue((int)(10000*systems[activePS].ps.getRGB2()));
-  sliderRGB2.setOnChange(rgb2Change);
-  sliderRGB2.setLabelName("RGB2");
+	sliderRGB2.location.x = 280;
+	sliderRGB2.location.y = 100;
+	sliderRGB2.size.x = 150;
+	sliderRGB2.setBounds(-50000,50000);
+	//sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
+	sliderRGB2.setValue((int)(10000*systems[activePS].ps.getRGB2()));
+	sliderRGB2.setOnChange(rgb2Change);
+	sliderRGB2.setLabelName("RGB2");
   
-  sliderRGB2.l_name.location.x = sliderRGB2.location.x;
-  sliderRGB2.l_name.location.y = sliderRGB2.location.y;
-  sliderRGB2.l_name.txtSize = sliderRGB2.size.y;
-  sliderRGB2.useLabelName = true;
+	sliderRGB2.l_name.location.x = sliderRGB2.location.x;
+	sliderRGB2.l_name.location.y = sliderRGB2.location.y;
+	sliderRGB2.l_name.txtSize = sliderRGB2.size.y;
+	sliderRGB2.useLabelName = true;
   
-  sliderRGB2.l_value.location.x = sliderRGB2.location.x + sliderRGB2.size.x;
-  sliderRGB2.l_value.location.y = sliderRGB2.location.y;
-  sliderRGB2.l_value.txtSize = sliderRGB2.size.y;
-  sliderRGB2.useLabelValue = true;  
+	sliderRGB2.l_value.location.x = sliderRGB2.location.x + sliderRGB2.size.x;
+	sliderRGB2.l_value.location.y = sliderRGB2.location.y;
+	sliderRGB2.l_value.txtSize = sliderRGB2.size.y;
+	sliderRGB2.useLabelValue = true;  
   
-  sliderRGB2.setType(TYPE_FLOAT);
+	sliderRGB2.setType(TYPE_FLOAT);
   
-  tabBlend.bindEnt(&sliderRGB2);
+	tabBlend.bindEnt(&sliderRGB2);
   
-  // rgb waveform type
-  
-  
-  listRGBWave.location.x = 530;
-  listRGBWave.location.y = 100;
-  listRGBWave.size.x = 85;
-  listRGBWave.createItems(6);
-  listRGBWave.fillItem(0,"SINE");
-  listRGBWave.fillItem(1,"SQUARE");
-  listRGBWave.fillItem(2,"TRIANGLE");
-  listRGBWave.fillItem(3,"SAWTOOTH");
-  listRGBWave.fillItem(4,"INVERSE SAWTOOTH");
-  listRGBWave.fillItem(5,"CONST");
-  listRGBWave.setOnChange(rgbWaveChange);
-  listRGBWave.setSelected(systems[activePS].ps.getRGBWave());
-  
-  listRGBWave.l_name.setString("Wave");
-  listRGBWave.useLabelName = true;
-  listRGBWave.l_name.location.x = listRGBWave.location.x;
-  listRGBWave.l_name.location.y = listRGBWave.location.y;
-  listRGBWave.l_name.txtSize = 12;
-  
-  tabBlend.bindEnt(&listRGBWave);
-  
-  // Alpha 1 slider
+	// rgb waveform type
   
   
+	listRGBWave.location.x = 530;
+	listRGBWave.location.y = 100;
+	listRGBWave.size.x = 85;
+	listRGBWave.createItems(6);
+	listRGBWave.fillItem(0,"SINE");
+	listRGBWave.fillItem(1,"SQUARE");
+	listRGBWave.fillItem(2,"TRIANGLE");
+	listRGBWave.fillItem(3,"SAWTOOTH");
+	listRGBWave.fillItem(4,"INVERSE SAWTOOTH");
+	listRGBWave.fillItem(5,"CONST");
+	listRGBWave.setOnChange(rgbWaveChange);
+	listRGBWave.setSelected(systems[activePS].ps.getRGBWave());
   
-  sliderAlpha1.location.x = 50;
-  sliderAlpha1.location.y = 50;
-  sliderAlpha1.size.x = 150;
-  sliderAlpha1.setBounds(-50000,50000);
-  //sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
-  sliderAlpha1.setValue((int)(10000*systems[activePS].ps.getAlpha1()));
-  sliderAlpha1.setOnChange(alpha1Change);
-  sliderAlpha1.setLabelName("Alpha1");
+	listRGBWave.l_name.setString("Wave");
+	listRGBWave.useLabelName = true;
+	listRGBWave.l_name.location.x = listRGBWave.location.x;
+	listRGBWave.l_name.location.y = listRGBWave.location.y;
+	listRGBWave.l_name.txtSize = 12;
   
-  sliderAlpha1.l_name.location.x = sliderAlpha1.location.x;
-  sliderAlpha1.l_name.location.y = sliderAlpha1.location.y;
-  sliderAlpha1.l_name.txtSize = sliderRGB1.size.y;
-  sliderAlpha1.useLabelName = true;
+	tabBlend.bindEnt(&listRGBWave);
   
-  sliderAlpha1.l_value.location.x = sliderAlpha1.location.x + sliderAlpha1.size.x;
-  sliderAlpha1.l_value.location.y = sliderAlpha1.location.y;
-  sliderAlpha1.l_value.txtSize = sliderAlpha1.size.y;
-  sliderAlpha1.useLabelValue = true;  
-  
-  sliderAlpha1.setType(TYPE_FLOAT);
-  
-  tabBlend.bindEnt(&sliderAlpha1);
-  
-  // Alpha 2 slider
+	// Alpha 1 slider
   
   
   
-  sliderAlpha2.location.x = 289;
-  sliderAlpha2.location.y = 50;
-  sliderAlpha2.size.x = 150;
-  sliderAlpha2.setBounds(-50000,50000);
-  //sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
-  sliderAlpha2.setValue((int)(10000*systems[activePS].ps.getAlpha2()));
-  sliderAlpha2.setOnChange(alpha2Change);
-  sliderAlpha2.setLabelName("Alpha2");
+	sliderAlpha1.location.x = 50;
+	sliderAlpha1.location.y = 50;
+	sliderAlpha1.size.x = 150;
+	sliderAlpha1.setBounds(-50000,50000);
+	//sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
+	sliderAlpha1.setValue((int)(10000*systems[activePS].ps.getAlpha1()));
+	sliderAlpha1.setOnChange(alpha1Change);
+	sliderAlpha1.setLabelName("Alpha1");
   
-  sliderAlpha2.l_name.location.x = sliderAlpha2.location.x;
-  sliderAlpha2.l_name.location.y = sliderAlpha2.location.y;
-  sliderAlpha2.l_name.txtSize = sliderRGB1.size.y;
-  sliderAlpha2.useLabelName = true;
+	sliderAlpha1.l_name.location.x = sliderAlpha1.location.x;
+	sliderAlpha1.l_name.location.y = sliderAlpha1.location.y;
+	sliderAlpha1.l_name.txtSize = sliderRGB1.size.y;
+	sliderAlpha1.useLabelName = true;
   
-  sliderAlpha2.l_value.location.x = sliderAlpha2.location.x + sliderAlpha2.size.x;
-  sliderAlpha2.l_value.location.y = sliderAlpha2.location.y;
-  sliderAlpha2.l_value.txtSize = sliderAlpha1.size.y;
-  sliderAlpha2.useLabelValue = true;  
+	sliderAlpha1.l_value.location.x = sliderAlpha1.location.x + sliderAlpha1.size.x;
+	sliderAlpha1.l_value.location.y = sliderAlpha1.location.y;
+	sliderAlpha1.l_value.txtSize = sliderAlpha1.size.y;
+	sliderAlpha1.useLabelValue = true;  
   
-  sliderAlpha2.setType(TYPE_FLOAT);
+	sliderAlpha1.setType(TYPE_FLOAT);
   
-  tabBlend.bindEnt(&sliderAlpha2);
+	tabBlend.bindEnt(&sliderAlpha1);
   
-  // alpha waveform type
-  
-  
-  listAlphaWave.location.x = 539;
-  listAlphaWave.location.y = 50;
-  listAlphaWave.size.x = 85;
-  listAlphaWave.createItems(6);
-  listAlphaWave.fillItem(0,"SINE");
-  listAlphaWave.fillItem(1,"SQUARE");
-  listAlphaWave.fillItem(2,"TRIANGLE");
-  listAlphaWave.fillItem(3,"SAWTOOTH");
-  listAlphaWave.fillItem(4,"INVERSE SAWTOOTH");
-  listAlphaWave.fillItem(5,"CONST");
-  listAlphaWave.setOnChange(alphaWaveChange);
-  listAlphaWave.setSelected(systems[activePS].ps.getAlphaWave());
-  
-  listAlphaWave.l_name.setString("Wave");
-  listAlphaWave.useLabelName = true;
-  listAlphaWave.l_name.location.x = listAlphaWave.location.x;
-  listAlphaWave.l_name.location.y = listAlphaWave.location.y;
-  listAlphaWave.l_name.txtSize = 12;
-  
-  tabBlend.bindEnt(&listAlphaWave);
-  
-  //src blend
+	// Alpha 2 slider
   
   
-  listSrcBlend.location.x = 150;
-  listSrcBlend.location.y = 115;
-  listSrcBlend.createItems(6);
-  listSrcBlend.fillItem(0,"GL_ONE");
-  listSrcBlend.fillItem(1,"GL_ZERO");
-  listSrcBlend.fillItem(2,"GL_DST_COLOR");
-  listSrcBlend.fillItem(3,"GL_ONE_MINUS_DST_COLOR");
-  listSrcBlend.fillItem(4,"GL_SRC_ALPHA");
-  listSrcBlend.fillItem(5,"GL_ONE_MINUS_SRC_ALPHA");
-  listSrcBlend.setOnChange(srcBlendChange);
   
-  listSrcBlend.l_name.setString("SRC*");
-  listSrcBlend.useLabelName = true;
-  listSrcBlend.l_name.location.x = listSrcBlend.location.x;
-  listSrcBlend.l_name.location.y = listSrcBlend.location.y;
-  listSrcBlend.l_name.txtSize = 12;
+	sliderAlpha2.location.x = 289;
+	sliderAlpha2.location.y = 50;
+	sliderAlpha2.size.x = 150;
+	sliderAlpha2.setBounds(-50000,50000);
+	//sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
+	sliderAlpha2.setValue((int)(10000*systems[activePS].ps.getAlpha2()));
+	sliderAlpha2.setOnChange(alpha2Change);
+	sliderAlpha2.setLabelName("Alpha2");
   
-  tabBlend.bindEnt(&listSrcBlend);
+	sliderAlpha2.l_name.location.x = sliderAlpha2.location.x;
+	sliderAlpha2.l_name.location.y = sliderAlpha2.location.y;
+	sliderAlpha2.l_name.txtSize = sliderRGB1.size.y;
+	sliderAlpha2.useLabelName = true;
   
-  //dst blend
+	sliderAlpha2.l_value.location.x = sliderAlpha2.location.x + sliderAlpha2.size.x;
+	sliderAlpha2.l_value.location.y = sliderAlpha2.location.y;
+	sliderAlpha2.l_value.txtSize = sliderAlpha1.size.y;
+	sliderAlpha2.useLabelValue = true;  
   
+	sliderAlpha2.setType(TYPE_FLOAT);
   
-  listDstBlend.location.x = 400;
-  listDstBlend.location.y = 115;
-  listDstBlend.createItems(6);
-  listDstBlend.fillItem(0,"GL_ONE");
-  listDstBlend.fillItem(1,"GL_ZERO");
-  listDstBlend.fillItem(2,"GL_SRC_COLOR");
-  listDstBlend.fillItem(3,"GL_ONE_MINUS_SRC_COLOR");
-  listDstBlend.fillItem(4,"GL_SRC_ALPHA");
-  listDstBlend.fillItem(5,"GL_ONE_MINUS_SRC_ALPHA");
-  listDstBlend.setOnChange(dstBlendChange);
+	tabBlend.bindEnt(&sliderAlpha2);
   
-  listDstBlend.l_name.setString("DST*");
-  listDstBlend.useLabelName = true;
-  listDstBlend.l_name.location.x = listDstBlend.location.x;
-  listDstBlend.l_name.location.y = listDstBlend.location.y;
-  listDstBlend.l_name.txtSize = 12;
-  
-  tabBlend.bindEnt(&listDstBlend);
-  
-  // RGBGEN SLIDER   //  MATCH XY button
-  
-  sliderRGBPhase.location.x = 100;
-  sliderRGBPhase.location.y = 75;
-  sliderRGBPhase.size.x = 150;
-  sliderRGBPhase.setBounds(0,10000);
-  //sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
-  sliderRGBPhase.setValue((int)(10000*systems[activePS].ps.getRGBPhase()));
-  sliderRGBPhase.setOnChange(rgbPhaseChange);
-  sliderRGBPhase.setLabelName("RGB Phase");
-  
-  sliderRGBPhase.l_name.location.x = sliderRGBPhase.location.x;
-  sliderRGBPhase.l_name.location.y = sliderRGBPhase.location.y;
-  sliderRGBPhase.l_name.txtSize = sliderRGBPhase.size.y;
-  sliderRGBPhase.useLabelName = true;
-  
-  sliderRGBPhase.l_value.location.x = sliderRGBPhase.location.x + sliderRGBPhase.size.x;
-  sliderRGBPhase.l_value.location.y = sliderRGBPhase.location.y;
-  sliderRGBPhase.l_value.txtSize = sliderRGBPhase.size.y;
-  sliderRGBPhase.useLabelValue = true;  
-  
-  sliderRGBPhase.setType(TYPE_FLOAT);
-  
-  tabBlend.bindEnt(&sliderRGBPhase);
-  
-  // AlphaGen Phase
-  
-  sliderAlphaPhase.location.x = 100;
-  sliderAlphaPhase.location.y = 25;
-  sliderAlphaPhase.size.x = 150;
-  sliderAlphaPhase.setBounds(0,10000);
-  //sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
-  sliderAlphaPhase.setValue((int)(10000*systems[activePS].ps.getAlphaPhase()));
-  sliderAlphaPhase.setOnChange(alphaPhaseChange);
-  sliderAlphaPhase.setLabelName("Alpha Phase");
-  
-  sliderAlphaPhase.l_name.location.x = sliderAlphaPhase.location.x;
-  sliderAlphaPhase.l_name.location.y = sliderAlphaPhase.location.y;
-  sliderAlphaPhase.l_name.txtSize = sliderAlphaPhase.size.y;
-  sliderAlphaPhase.useLabelName = true;
-  
-  sliderAlphaPhase.l_value.location.x = sliderAlphaPhase.location.x + sliderAlphaPhase.size.x;
-  sliderAlphaPhase.l_value.location.y = sliderAlphaPhase.location.y;
-  sliderAlphaPhase.l_value.txtSize = sliderAlphaPhase.size.y;
-  sliderAlphaPhase.useLabelValue = true;  
-  
-  sliderAlphaPhase.setType(TYPE_FLOAT);
-  
-  tabBlend.bindEnt(&sliderAlphaPhase);
-  
-  // set xy rgb button
+	// alpha waveform type
   
   
-  butRGBXY.location.x = 440;
-  butRGBXY.location.y = 75;
-  butRGBXY.l_name.setString("Match XY Phase");
-  butRGBXY.useLabelName = true;
-  butRGBXY.l_name.location.x = butRGBXY.location.x;
-  butRGBXY.l_name.location.y = butRGBXY.location.y;
-  butRGBXY.l_name.txtSize = butNatH.size.y;
-  butRGBXY.setOnClick(rgbPhaseMatchXY);
+	listAlphaWave.location.x = 539;
+	listAlphaWave.location.y = 50;
+	listAlphaWave.size.x = 85;
+	listAlphaWave.createItems(6);
+	listAlphaWave.fillItem(0,"SINE");
+	listAlphaWave.fillItem(1,"SQUARE");
+	listAlphaWave.fillItem(2,"TRIANGLE");
+	listAlphaWave.fillItem(3,"SAWTOOTH");
+	listAlphaWave.fillItem(4,"INVERSE SAWTOOTH");
+	listAlphaWave.fillItem(5,"CONST");
+	listAlphaWave.setOnChange(alphaWaveChange);
+	listAlphaWave.setSelected(systems[activePS].ps.getAlphaWave());
   
-  tabBlend.bindEnt(&butRGBXY);
+	listAlphaWave.l_name.setString("Wave");
+	listAlphaWave.useLabelName = true;
+	listAlphaWave.l_name.location.x = listAlphaWave.location.x;
+	listAlphaWave.l_name.location.y = listAlphaWave.location.y;
+	listAlphaWave.l_name.txtSize = 12;
+  
+	tabBlend.bindEnt(&listAlphaWave);
+  
+	//src blend
+  
+  
+	listSrcBlend.location.x = 150;
+	listSrcBlend.location.y = 115;
+	listSrcBlend.createItems(6);
+	listSrcBlend.fillItem(0,"GL_ONE");
+	listSrcBlend.fillItem(1,"GL_ZERO");
+	listSrcBlend.fillItem(2,"GL_DST_COLOR");
+	listSrcBlend.fillItem(3,"GL_ONE_MINUS_DST_COLOR");
+	listSrcBlend.fillItem(4,"GL_SRC_ALPHA");
+	listSrcBlend.fillItem(5,"GL_ONE_MINUS_SRC_ALPHA");
+	listSrcBlend.setOnChange(srcBlendChange);
+  
+	listSrcBlend.l_name.setString("SRC*");
+	listSrcBlend.useLabelName = true;
+	listSrcBlend.l_name.location.x = listSrcBlend.location.x;
+	listSrcBlend.l_name.location.y = listSrcBlend.location.y;
+	listSrcBlend.l_name.txtSize = 12;
+  
+	tabBlend.bindEnt(&listSrcBlend);
+  
+	//dst blend
+  
+  
+	listDstBlend.location.x = 400;
+	listDstBlend.location.y = 115;
+	listDstBlend.createItems(6);
+	listDstBlend.fillItem(0,"GL_ONE");
+	listDstBlend.fillItem(1,"GL_ZERO");
+	listDstBlend.fillItem(2,"GL_SRC_COLOR");
+	listDstBlend.fillItem(3,"GL_ONE_MINUS_SRC_COLOR");
+	listDstBlend.fillItem(4,"GL_SRC_ALPHA");
+	listDstBlend.fillItem(5,"GL_ONE_MINUS_SRC_ALPHA");
+	listDstBlend.setOnChange(dstBlendChange);
+  
+	listDstBlend.l_name.setString("DST*");
+	listDstBlend.useLabelName = true;
+	listDstBlend.l_name.location.x = listDstBlend.location.x;
+	listDstBlend.l_name.location.y = listDstBlend.location.y;
+	listDstBlend.l_name.txtSize = 12;
+  
+	tabBlend.bindEnt(&listDstBlend);
+  
+	// RGBGEN SLIDER   //  MATCH XY button
+  
+	sliderRGBPhase.location.x = 100;
+	sliderRGBPhase.location.y = 75;
+	sliderRGBPhase.size.x = 150;
+	sliderRGBPhase.setBounds(0,10000);
+	//sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
+	sliderRGBPhase.setValue((int)(10000*systems[activePS].ps.getRGBPhase()));
+	sliderRGBPhase.setOnChange(rgbPhaseChange);
+	sliderRGBPhase.setLabelName("RGB Phase");
+  
+	sliderRGBPhase.l_name.location.x = sliderRGBPhase.location.x;
+	sliderRGBPhase.l_name.location.y = sliderRGBPhase.location.y;
+	sliderRGBPhase.l_name.txtSize = sliderRGBPhase.size.y;
+	sliderRGBPhase.useLabelName = true;
+  
+	sliderRGBPhase.l_value.location.x = sliderRGBPhase.location.x + sliderRGBPhase.size.x;
+	sliderRGBPhase.l_value.location.y = sliderRGBPhase.location.y;
+	sliderRGBPhase.l_value.txtSize = sliderRGBPhase.size.y;
+	sliderRGBPhase.useLabelValue = true;  
+  
+	sliderRGBPhase.setType(TYPE_FLOAT);
+  
+	tabBlend.bindEnt(&sliderRGBPhase);
+  
+	// AlphaGen Phase
+  
+	sliderAlphaPhase.location.x = 100;
+	sliderAlphaPhase.location.y = 25;
+	sliderAlphaPhase.size.x = 150;
+	sliderAlphaPhase.setBounds(0,10000);
+	//sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
+	sliderAlphaPhase.setValue((int)(10000*systems[activePS].ps.getAlphaPhase()));
+	sliderAlphaPhase.setOnChange(alphaPhaseChange);
+	sliderAlphaPhase.setLabelName("Alpha Phase");
+  
+	sliderAlphaPhase.l_name.location.x = sliderAlphaPhase.location.x;
+	sliderAlphaPhase.l_name.location.y = sliderAlphaPhase.location.y;
+	sliderAlphaPhase.l_name.txtSize = sliderAlphaPhase.size.y;
+	sliderAlphaPhase.useLabelName = true;
+  
+	sliderAlphaPhase.l_value.location.x = sliderAlphaPhase.location.x + sliderAlphaPhase.size.x;
+	sliderAlphaPhase.l_value.location.y = sliderAlphaPhase.location.y;
+	sliderAlphaPhase.l_value.txtSize = sliderAlphaPhase.size.y;
+	sliderAlphaPhase.useLabelValue = true;  
+  
+	sliderAlphaPhase.setType(TYPE_FLOAT);
+  
+	tabBlend.bindEnt(&sliderAlphaPhase);
+  
+	// set xy rgb button
+  
+  
+	butRGBXY.location.x = 440;
+	butRGBXY.location.y = 75;
+	butRGBXY.l_name.setString("Match XY Phase");
+	butRGBXY.useLabelName = true;
+	butRGBXY.l_name.location.x = butRGBXY.location.x;
+	butRGBXY.l_name.location.y = butRGBXY.location.y;
+	butRGBXY.l_name.txtSize = butNatH.size.y;
+	butRGBXY.setOnClick(rgbPhaseMatchXY);
+  
+	tabBlend.bindEnt(&butRGBXY);
 
-  butBGPS.location.x = 580;
-  butBGPS.location.y = 468;
-  butBGPS.size.x = 60;
-  butBGPS.size.y = 12;
-  butBGPS.l_name.setString("Systems");
-  butBGPS.useLabelName = true;
-  butBGPS.l_name.alignment = ALIGN_LEFT;
-  butBGPS.l_name.location.x = butBGPS.location.x;
-  butBGPS.l_name.location.y = butBGPS.location.y;
-  butBGPS.l_name.txtSize  = butBGPS.size.y;
-  butBGPS.setOnClick(openBGPSPannel);
+	butBGPS.location.x = 580;
+	butBGPS.location.y = 468;
+	butBGPS.size.x = 60;
+	butBGPS.size.y = 12;
+	butBGPS.l_name.setString("Systems");
+	butBGPS.useLabelName = true;
+	butBGPS.l_name.alignment = ALIGN_LEFT;
+	butBGPS.l_name.location.x = butBGPS.location.x;
+	butBGPS.l_name.location.y = butBGPS.location.y;
+	butBGPS.l_name.txtSize  = butBGPS.size.y;
+	butBGPS.setOnClick(openBGPSPannel);
 
-  entities.bindEnt(&butBGPS);
+	entities.bindEnt(&butBGPS);
   
-  // match xy alphagen button
-  
-  
-  butAlphaXY.location.x = 440;
-  butAlphaXY.location.y = 25;
-  butAlphaXY.l_name.setString("Match XY Phase");
-  butAlphaXY.useLabelName = true;
-  butAlphaXY.l_name.location.x = butAlphaXY.location.x;
-  butAlphaXY.l_name.location.y = butAlphaXY.location.y;
-  butAlphaXY.l_name.txtSize = butNatH.size.y;
-  butAlphaXY.setOnClick(alphaPhaseMatchXY);
-  
-  tabBlend.bindEnt(&butAlphaXY);
+	// match xy alphagen button
   
   
-  // TcMod Tab
+	butAlphaXY.location.x = 440;
+	butAlphaXY.location.y = 25;
+	butAlphaXY.l_name.setString("Match XY Phase");
+	butAlphaXY.useLabelName = true;
+	butAlphaXY.l_name.location.x = butAlphaXY.location.x;
+	butAlphaXY.l_name.location.y = butAlphaXY.location.y;
+	butAlphaXY.l_name.txtSize = butNatH.size.y;
+	butAlphaXY.setOnClick(alphaPhaseMatchXY);
   
-  // Stretch1
+	tabBlend.bindEnt(&butAlphaXY);
+  
+  
+	// TcMod Tab
+  
+	// Stretch1
   
   
   
-  sliderStretch1.location.x = 60;
-  sliderStretch1.location.y = 100;
-  sliderStretch1.size.x = 150;
-  sliderStretch1.setBounds(0,10000);
-  //sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
-  sliderStretch1.setValue((int)(10000*systems[activePS].ps.getStretch1()));
-  sliderStretch1.setOnChange(stretch1Change);
-  sliderStretch1.setLabelName("Scale1");
+	sliderStretch1.location.x = 60;
+	sliderStretch1.location.y = 100;
+	sliderStretch1.size.x = 150;
+	sliderStretch1.setBounds(0,10000);
+	//sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
+	sliderStretch1.setValue((int)(10000*systems[activePS].ps.getStretch1()));
+	sliderStretch1.setOnChange(stretch1Change);
+	sliderStretch1.setLabelName("Scale1");
   
-  sliderStretch1.l_name.location.x = sliderStretch1.location.x;
-  sliderStretch1.l_name.location.y = sliderStretch1.location.y;
-  sliderStretch1.l_name.txtSize = sliderStretch1.size.y;
-  sliderStretch1.useLabelName = true;
+	sliderStretch1.l_name.location.x = sliderStretch1.location.x;
+	sliderStretch1.l_name.location.y = sliderStretch1.location.y;
+	sliderStretch1.l_name.txtSize = sliderStretch1.size.y;
+	sliderStretch1.useLabelName = true;
   
-  sliderStretch1.l_value.location.x = sliderStretch1.location.x + sliderStretch1.size.x;
-  sliderStretch1.l_value.location.y = sliderStretch1.location.y;
-  sliderStretch1.l_value.txtSize = sliderStretch1.size.y;
-  sliderStretch1.useLabelValue = true;  
+	sliderStretch1.l_value.location.x = sliderStretch1.location.x + sliderStretch1.size.x;
+	sliderStretch1.l_value.location.y = sliderStretch1.location.y;
+	sliderStretch1.l_value.txtSize = sliderStretch1.size.y;
+	sliderStretch1.useLabelValue = true;  
   
-  sliderStretch1.setType(TYPE_FLOAT);
+	sliderStretch1.setType(TYPE_FLOAT);
   
-  tabTcMod.bindEnt(&sliderStretch1);
+	tabTcMod.bindEnt(&sliderStretch1);
 
-  // RGB 2
+	// RGB 2
   
   
   
-  sliderStretch2.location.x = 312;
-  sliderStretch2.location.y = 100;
-  sliderStretch2.size.x = 150;
-  sliderStretch2.setBounds(0,10000);
-  //sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
-  sliderStretch2.setValue((int)(10000*systems[activePS].ps.getStretch2()));
-  sliderStretch2.setOnChange(stretch2Change);
-  sliderStretch2.setLabelName("Scale2");
+	sliderStretch2.location.x = 312;
+	sliderStretch2.location.y = 100;
+	sliderStretch2.size.x = 150;
+	sliderStretch2.setBounds(0,10000);
+	//sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
+	sliderStretch2.setValue((int)(10000*systems[activePS].ps.getStretch2()));
+	sliderStretch2.setOnChange(stretch2Change);
+	sliderStretch2.setLabelName("Scale2");
   
-  sliderStretch2.l_name.location.x = sliderStretch2.location.x;
-  sliderStretch2.l_name.location.y = sliderStretch2.location.y;
-  sliderStretch2.l_name.txtSize = sliderStretch2.size.y;
-  sliderStretch2.useLabelName = true;
+	sliderStretch2.l_name.location.x = sliderStretch2.location.x;
+	sliderStretch2.l_name.location.y = sliderStretch2.location.y;
+	sliderStretch2.l_name.txtSize = sliderStretch2.size.y;
+	sliderStretch2.useLabelName = true;
   
-  sliderStretch2.l_value.location.x = sliderStretch2.location.x + sliderStretch2.size.x;
-  sliderStretch2.l_value.location.y = sliderStretch2.location.y;
-  sliderStretch2.l_value.txtSize = sliderStretch2.size.y;
-  sliderStretch2.useLabelValue = true;  
+	sliderStretch2.l_value.location.x = sliderStretch2.location.x + sliderStretch2.size.x;
+	sliderStretch2.l_value.location.y = sliderStretch2.location.y;
+	sliderStretch2.l_value.txtSize = sliderStretch2.size.y;
+	sliderStretch2.useLabelValue = true;  
   
-  sliderStretch2.setType(TYPE_FLOAT);
+	sliderStretch2.setType(TYPE_FLOAT);
   
-  tabTcMod.bindEnt(&sliderStretch2);
+	tabTcMod.bindEnt(&sliderStretch2);
   
-  // stretch waveform type
-  
-  
-  listStretchWave.location.x = 550;
-  listStretchWave.location.y = 100;
-  listStretchWave.size.x = 85;
-  listStretchWave.createItems(6);
-  listStretchWave.fillItem(0,"SINE");
-  listStretchWave.fillItem(1,"SQUARE");
-  listStretchWave.fillItem(2,"TRIANGLE");
-  listStretchWave.fillItem(3,"SAWTOOTH");
-  listStretchWave.fillItem(4,"INVERSE SAWTOOTH");
-  listStretchWave.fillItem(5,"DISABLED");
-  listStretchWave.setOnChange(stretchWaveChange);
-  listStretchWave.setSelected(systems[activePS].ps.getStretchWave());
-  
-  listStretchWave.l_name.setString("Wave");
-  listStretchWave.useLabelName = true;
-  listStretchWave.l_name.location.x = listStretchWave.location.x;
-  listStretchWave.l_name.location.y = listStretchWave.location.y;
-  listStretchWave.l_name.txtSize = 12;
-  
-  tabTcMod.bindEnt(&listStretchWave);
+	// stretch waveform type
   
   
+	listStretchWave.location.x = 550;
+	listStretchWave.location.y = 100;
+	listStretchWave.size.x = 85;
+	listStretchWave.createItems(6);
+	listStretchWave.fillItem(0,"SINE");
+	listStretchWave.fillItem(1,"SQUARE");
+	listStretchWave.fillItem(2,"TRIANGLE");
+	listStretchWave.fillItem(3,"SAWTOOTH");
+	listStretchWave.fillItem(4,"INVERSE SAWTOOTH");
+	listStretchWave.fillItem(5,"DISABLED");
+	listStretchWave.setOnChange(stretchWaveChange);
+	listStretchWave.setSelected(systems[activePS].ps.getStretchWave());
   
-  sliderStretchPhase.location.x = 100;
-  sliderStretchPhase.location.y = 75;
-  sliderStretchPhase.size.x = 150;
-  sliderStretchPhase.setBounds(0,10000);
-  //sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
-  sliderStretchPhase.setValue((int)(10000*systems[activePS].ps.getStretchPhase()));
-  sliderStretchPhase.setOnChange(stretchPhaseChange);
-  sliderStretchPhase.setLabelName("Scale Phase");
+	listStretchWave.l_name.setString("Wave");
+	listStretchWave.useLabelName = true;
+	listStretchWave.l_name.location.x = listStretchWave.location.x;
+	listStretchWave.l_name.location.y = listStretchWave.location.y;
+	listStretchWave.l_name.txtSize = 12;
   
-  sliderStretchPhase.l_name.location.x = sliderStretchPhase.location.x;
-  sliderStretchPhase.l_name.location.y = sliderStretchPhase.location.y;
-  sliderStretchPhase.l_name.txtSize = sliderStretchPhase.size.y;
-  sliderStretchPhase.useLabelName = true;
-  
-  sliderStretchPhase.l_value.location.x = sliderStretchPhase.location.x + sliderStretchPhase.size.x;
-  sliderStretchPhase.l_value.location.y = sliderStretchPhase.location.y;
-  sliderStretchPhase.l_value.txtSize = sliderStretchPhase.size.y;
-  sliderStretchPhase.useLabelValue = true;  
-  
-  sliderStretchPhase.setType(TYPE_FLOAT);
-  
-  tabTcMod.bindEnt(&sliderStretchPhase);
-  
-  
-  butStretchXY.location.x = 440;
-  butStretchXY.location.y = 75;
-  butStretchXY.l_name.setString("Match XY Phase");
-  butStretchXY.useLabelName = true;
-  butStretchXY.l_name.location.x = butStretchXY.location.x;
-  butStretchXY.l_name.location.y = butStretchXY.location.y;
-  butStretchXY.l_name.txtSize = butStretchXY.size.y;
-  butStretchXY.setOnClick(stretchPhaseMatchXY);
-  
-  tabTcMod.bindEnt(&butStretchXY);
+	tabTcMod.bindEnt(&listStretchWave);
   
   
   
-  sliderRotSpeed.location.x = 100;
-  sliderRotSpeed.location.y = 33;
-  sliderRotSpeed.size.x = 125;
-  sliderRotSpeed.setBounds(0,360);
-  sliderRotSpeed.setValue((int)(systems[activePS].ps.getRotSpeed()));
-  sliderRotSpeed.setOnChange(rotSpeedChange);
-  sliderRotSpeed.setLabelName("Rotate Speed");
+	sliderStretchPhase.location.x = 100;
+	sliderStretchPhase.location.y = 75;
+	sliderStretchPhase.size.x = 150;
+	sliderStretchPhase.setBounds(0,10000);
+	//sliderMasterPhase.setIntermediatePosition( sliderPG.size.x / 2);
+	sliderStretchPhase.setValue((int)(10000*systems[activePS].ps.getStretchPhase()));
+	sliderStretchPhase.setOnChange(stretchPhaseChange);
+	sliderStretchPhase.setLabelName("Scale Phase");
   
-  sliderRotSpeed.l_name.location.x = sliderRotSpeed.location.x;
-  sliderRotSpeed.l_name.location.y = sliderRotSpeed.location.y;
-  sliderRotSpeed.l_name.txtSize = sliderRotSpeed.size.y;
-  sliderRotSpeed.useLabelName = true;
+	sliderStretchPhase.l_name.location.x = sliderStretchPhase.location.x;
+	sliderStretchPhase.l_name.location.y = sliderStretchPhase.location.y;
+	sliderStretchPhase.l_name.txtSize = sliderStretchPhase.size.y;
+	sliderStretchPhase.useLabelName = true;
   
-  sliderRotSpeed.l_value.location.x = sliderRotSpeed.location.x + sliderRotSpeed.size.x;
-  sliderRotSpeed.l_value.location.y = sliderRotSpeed.location.y;
-  sliderRotSpeed.l_value.txtSize = sliderRotSpeed.size.y;
-  sliderRotSpeed.useLabelValue = true;
+	sliderStretchPhase.l_value.location.x = sliderStretchPhase.location.x + sliderStretchPhase.size.x;
+	sliderStretchPhase.l_value.location.y = sliderStretchPhase.location.y;
+	sliderStretchPhase.l_value.txtSize = sliderStretchPhase.size.y;
+	sliderStretchPhase.useLabelValue = true;  
   
-  tabTcMod.bindEnt(&sliderRotSpeed);
+	sliderStretchPhase.setType(TYPE_FLOAT);
+  
+	tabTcMod.bindEnt(&sliderStretchPhase);
+  
+  
+	butStretchXY.location.x = 440;
+	butStretchXY.location.y = 75;
+	butStretchXY.l_name.setString("Match XY Phase");
+	butStretchXY.useLabelName = true;
+	butStretchXY.l_name.location.x = butStretchXY.location.x;
+	butStretchXY.l_name.location.y = butStretchXY.location.y;
+	butStretchXY.l_name.txtSize = butStretchXY.size.y;
+	butStretchXY.setOnClick(stretchPhaseMatchXY);
+  
+	tabTcMod.bindEnt(&butStretchXY);
   
   
   
-  sliderRotSpeedVar.location.x = 350;
-  sliderRotSpeedVar.location.y = 33;
-  sliderRotSpeedVar.size.x = 125;
-  sliderRotSpeedVar.setBounds(0,360);
-  sliderRotSpeedVar.setValue((int)(systems[activePS].ps.getRotSpeedVar()));
-  sliderRotSpeedVar.setOnChange(rotSpeedVarChange);
-  sliderRotSpeedVar.setLabelName("Var");
+	sliderRotSpeed.location.x = 100;
+	sliderRotSpeed.location.y = 33;
+	sliderRotSpeed.size.x = 125;
+	sliderRotSpeed.setBounds(0,360);
+	sliderRotSpeed.setValue((int)(systems[activePS].ps.getRotSpeed()));
+	sliderRotSpeed.setOnChange(rotSpeedChange);
+	sliderRotSpeed.setLabelName("Rotate Speed");
   
-  sliderRotSpeedVar.l_name.location.x = sliderRotSpeedVar.location.x;
-  sliderRotSpeedVar.l_name.location.y = sliderRotSpeedVar.location.y;
-  sliderRotSpeedVar.l_name.txtSize = sliderRotSpeedVar.size.y;
-  sliderRotSpeedVar.useLabelName = true;
+	sliderRotSpeed.l_name.location.x = sliderRotSpeed.location.x;
+	sliderRotSpeed.l_name.location.y = sliderRotSpeed.location.y;
+	sliderRotSpeed.l_name.txtSize = sliderRotSpeed.size.y;
+	sliderRotSpeed.useLabelName = true;
   
-  sliderRotSpeedVar.l_value.location.x = sliderRotSpeedVar.location.x + sliderRotSpeedVar.size.x;
-  sliderRotSpeedVar.l_value.location.y = sliderRotSpeedVar.location.y;
-  sliderRotSpeedVar.l_value.txtSize = sliderRotSpeedVar.size.y;
-  sliderRotSpeedVar.useLabelValue = true;
+	sliderRotSpeed.l_value.location.x = sliderRotSpeed.location.x + sliderRotSpeed.size.x;
+	sliderRotSpeed.l_value.location.y = sliderRotSpeed.location.y;
+	sliderRotSpeed.l_value.txtSize = sliderRotSpeed.size.y;
+	sliderRotSpeed.useLabelValue = true;
   
-  tabTcMod.bindEnt(&sliderRotSpeedVar);
+	tabTcMod.bindEnt(&sliderRotSpeed);
+  
+  
+  
+	sliderRotSpeedVar.location.x = 350;
+	sliderRotSpeedVar.location.y = 33;
+	sliderRotSpeedVar.size.x = 125;
+	sliderRotSpeedVar.setBounds(0,360);
+	sliderRotSpeedVar.setValue((int)(systems[activePS].ps.getRotSpeedVar()));
+	sliderRotSpeedVar.setOnChange(rotSpeedVarChange);
+	sliderRotSpeedVar.setLabelName("Var");
+  
+	sliderRotSpeedVar.l_name.location.x = sliderRotSpeedVar.location.x;
+	sliderRotSpeedVar.l_name.location.y = sliderRotSpeedVar.location.y;
+	sliderRotSpeedVar.l_name.txtSize = sliderRotSpeedVar.size.y;
+	sliderRotSpeedVar.useLabelName = true;
+  
+	sliderRotSpeedVar.l_value.location.x = sliderRotSpeedVar.location.x + sliderRotSpeedVar.size.x;
+	sliderRotSpeedVar.l_value.location.y = sliderRotSpeedVar.location.y;
+	sliderRotSpeedVar.l_value.txtSize = sliderRotSpeedVar.size.y;
+	sliderRotSpeedVar.useLabelValue = true;
+  
+	tabTcMod.bindEnt(&sliderRotSpeedVar);
 
-  // BG Pannel Stuff
-  /*
-	button BGLoad1;
-	button BGLoad2;
-	button BGLoad3;
-	button BGLoad4;
+	int ypos = 447;
+	for (auto &b : buttons) {
+		b.location.y = ypos;
+		ypos-=15;
+		b.location.x = 150;
+		BGPannel.bindEnt(&b);
+		b.setColor(SYS_BUT_DISABLE,BUTTON_COLOR);
+		b.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_ACTIVE);
+		b.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_HOVERACTIVE);
+	}	
 
-	button BGDel1;
-	button BGDel2;
-	button BGDel3;
-	button BGDel4;
-
-	label BGName1;
-	label BGName2;
-	label BGName3;
-	label BGName4;
-
-	horizSlider BGx1; horizSlider BGy1; horizSlider BGz1;
-	horizSlider BGx2; horizSlider BGy2; horizSlider BGz2;
-	horizSlider BGx3; horizSlider BGy3; horizSlider BGz3;
-*/
-	//BGLabelDel.setString("DEL"); BGLabelDel.location.x = 610; BGLabelDel.txtSize = 15; BGPannel.bindEnt(&BGLabelDel);
-
-	BGLoad1.location.x = BGLoad2.location.x = BGLoad3.location.x = BGLoad4.location.x = 150;
-	BGLoad1.location.y = 447; BGLoad2.location.y = 432; BGLoad3.location.y = 417; BGLoad4.location.y = 402;
-	BGPannel.bindEnt(&BGLoad1); BGPannel.bindEnt(&BGLoad2); BGPannel.bindEnt(&BGLoad3); BGPannel.bindEnt(&BGLoad4);
-
-	BGLoad1.setColor(SYS_BUT_CURRENT,BUTTON_COLOR);
-	BGLoad1.setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);
-	BGLoad1.setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);
-
-	BGLoad2.setColor(SYS_BUT_DISABLE,BUTTON_COLOR);
-	BGLoad2.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_ACTIVE);
-	BGLoad2.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_HOVERACTIVE);
-
-	BGLoad3.setColor(SYS_BUT_DISABLE,BUTTON_COLOR);
-	BGLoad3.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_ACTIVE);
-	BGLoad3.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_HOVERACTIVE);
-
-	BGLoad4.setColor(SYS_BUT_DISABLE,BUTTON_COLOR);
-	BGLoad4.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_ACTIVE);
-	BGLoad4.setColor(SYS_BUT_ACTIVE,BUTTON_COLOR_HOVERACTIVE);
-
-	BGLoad1.setOnClick(Active1Pressed);
-	BGLoad2.setOnClick(Active2Pressed);
-	BGLoad3.setOnClick(Active3Pressed);
-	BGLoad4.setOnClick(Active4Pressed);
-
+	buttons[0].setColor(SYS_BUT_CURRENT,BUTTON_COLOR);					// Colour the currently active button
+	buttons[0].setColor(SYS_BUT_DELETE,BUTTON_COLOR_ACTIVE);
+	buttons[0].setColor(SYS_BUT_DELETEL,BUTTON_COLOR_HOVERACTIVE);
+	
 	//BGLoad1.setOnClick(pannelLoad1); BGLoad2.setOnClick(pannelLoad2); BGLoad3.setOnClick(pannelLoad3); BGLoad4.setOnClick(pannelLoad4);
 
-	BGSort1.location.y = BGx1.location.y = BGy1.location.y = BGz1.location.y = BGrx1.location.y = BGry1.location.y = BGrz1.location.y = 447;
-	BGSort2.location.y = BGx2.location.y = BGy2.location.y = BGz2.location.y = BGrx2.location.y = BGry2.location.y = BGrz2.location.y = 432;
-	BGSort3.location.y = BGx3.location.y = BGy3.location.y = BGz3.location.y = BGrx3.location.y = BGry3.location.y = BGrz3.location.y = 417;
-	BGSort4.location.y = BGx4.location.y = BGy4.location.y = BGz4.location.y = BGrx4.location.y = BGry4.location.y = BGrz4.location.y = 402;
+	ypos = 447;
+	for (int i=0;i<MAX_SYSTEMS;i++)
+	{
 
-	BGx1.location.x = BGx2.location.x = BGx3.location.x = BGx4.location.x = 378;
-	BGy1.location.x = BGy2.location.x = BGy3.location.x = BGy4.location.x = 422;
-	BGz1.location.x = BGz2.location.x = BGz3.location.x = BGz4.location.x = 466;
-
-	BGrx1.location.x = BGrx2.location.x = BGrx3.location.x = BGrx4.location.x = 510;
-	BGry1.location.x = BGry2.location.x = BGry3.location.x = BGry4.location.x = 554;
-	BGrz1.location.x = BGrz2.location.x = BGrz3.location.x = BGrz4.location.x = 598;
-
-	BGx1.size.x = BGx2.size.x = BGx3.size.x = BGx4.size.x = BGy1.size.x = BGy2.size.x = BGy3.size.x = BGy4.size.x =
-		BGz1.size.x = BGz2.size.x = BGz3.size.x = BGz4.size.x = 40;
-
-	BGrx1.size.x = BGrx2.size.x = BGrx3.size.x = BGrx4.size.x = BGry1.size.x = BGry2.size.x = BGry3.size.x = BGry4.size.x =
-		BGrz1.size.x = BGrz2.size.x = BGrz3.size.x = BGrz4.size.x = 40;
-
-	BGx1.setIntermediatePosition(BGx1.size.x/2);BGy1.setIntermediatePosition(BGy1.size.x/2);BGz1.setIntermediatePosition(BGz1.size.x/2);
-	BGx2.setIntermediatePosition(BGx2.size.x/2);BGy2.setIntermediatePosition(BGy2.size.x/2);BGz2.setIntermediatePosition(BGz2.size.x/2);
-	BGx3.setIntermediatePosition(BGx3.size.x/2);BGy3.setIntermediatePosition(BGy3.size.x/2);BGz3.setIntermediatePosition(BGz3.size.x/2);
-	BGx4.setIntermediatePosition(BGx4.size.x/2);BGy4.setIntermediatePosition(BGy4.size.x/2);BGz4.setIntermediatePosition(BGz4.size.x/2);
-
-	BGrx1.setIntermediatePosition(BGrx1.size.x/2);BGry1.setIntermediatePosition(BGry1.size.x/2);BGrz1.setIntermediatePosition(BGrz1.size.x/2);
-	BGrx2.setIntermediatePosition(BGrx2.size.x/2);BGry2.setIntermediatePosition(BGry2.size.x/2);BGrz2.setIntermediatePosition(BGrz2.size.x/2);
-	BGrx3.setIntermediatePosition(BGrx3.size.x/2);BGry3.setIntermediatePosition(BGry3.size.x/2);BGrz3.setIntermediatePosition(BGrz3.size.x/2);
-	BGrx4.setIntermediatePosition(BGrx4.size.x/2);BGry4.setIntermediatePosition(BGry4.size.x/2);BGrz4.setIntermediatePosition(BGrz4.size.x/2);
-
-	BGx1.setBounds(-256,256,0);BGy1.setBounds(-256,256,0);BGz1.setBounds(-256,256,0);
-	BGx2.setBounds(-256,256,0);BGy2.setBounds(-256,256,0);BGz2.setBounds(-256,256,0);
-	BGx3.setBounds(-256,256,0);BGy3.setBounds(-256,256,0);BGz3.setBounds(-256,256,0);
-	BGx4.setBounds(-256,256,0);BGy4.setBounds(-256,256,0);BGz4.setBounds(-256,256,0);
-
-	BGrx1.setBounds(-180,180,0);BGry1.setBounds(-180,180,0);BGrz1.setBounds(-180,180,0);
-	BGrx2.setBounds(-180,180,0);BGry2.setBounds(-180,180,0);BGrz2.setBounds(-180,180,0);
-	BGrx3.setBounds(-180,180,0);BGry3.setBounds(-180,180,0);BGrz3.setBounds(-180,180,0);
-	BGrx4.setBounds(-180,180,0);BGry4.setBounds(-180,180,0);BGrz4.setBounds(-180,180,0);
-
-	BGx1.setOnChange(PS1XChange);BGx2.setOnChange(PS2XChange);BGx3.setOnChange(PS3XChange);BGx4.setOnChange(PS4XChange);
-	BGy1.setOnChange(PS1YChange);BGy2.setOnChange(PS2YChange);BGy3.setOnChange(PS3YChange);BGy4.setOnChange(PS4YChange);
-	BGz1.setOnChange(PS1ZChange);BGz2.setOnChange(PS2ZChange);BGz3.setOnChange(PS3ZChange);BGz4.setOnChange(PS4ZChange);
-
-	BGrx1.setOnChange(PS1rXChange);BGrx2.setOnChange(PS2rXChange);BGrx3.setOnChange(PS3rXChange);BGrx4.setOnChange(PS4rXChange);
-	BGry1.setOnChange(PS1rYChange);BGry2.setOnChange(PS2rYChange);BGry3.setOnChange(PS3rYChange);BGry4.setOnChange(PS4rYChange);
-	BGrz1.setOnChange(PS1rZChange);BGrz2.setOnChange(PS2rZChange);BGrz3.setOnChange(PS3rZChange);BGrz4.setOnChange(PS4rZChange);
+		buttons[i].setOnClick([i](void)
+			{
+				activeProcessor(i);
+			}); 
 
 
-	BGPannel.bindEnt(&BGx1);BGPannel.bindEnt(&BGx2);BGPannel.bindEnt(&BGx3);BGPannel.bindEnt(&BGx4);
-	BGPannel.bindEnt(&BGy1);BGPannel.bindEnt(&BGy2);BGPannel.bindEnt(&BGy3);BGPannel.bindEnt(&BGy4);
-	BGPannel.bindEnt(&BGz1);BGPannel.bindEnt(&BGz2);BGPannel.bindEnt(&BGz3);BGPannel.bindEnt(&BGz4);
-	BGPannel.bindEnt(&BGSort1);BGPannel.bindEnt(&BGSort2);BGPannel.bindEnt(&BGSort3);BGPannel.bindEnt(&BGSort4);
+		sorts[i].location.y = posXs[i].location.y = posYs[i].location.y = posZs[i].location.y = rotXs[i].location.y = 
+			rotXs[i].location.y = rotYs[i].location.y = rotZs[i].location.y = ypos;
+		
+		posXs[i].location.x = 378; posYs[i].location.x = 422; posZs[i].location.x = 466;
+		rotXs[i].location.x = 510; rotYs[i].location.x = 554; rotZs[i].location.x = 598;
 
-	BGPannel.bindEnt(&BGrx1);BGPannel.bindEnt(&BGrx2);BGPannel.bindEnt(&BGrx3);BGPannel.bindEnt(&BGrx4);
-	BGPannel.bindEnt(&BGry1);BGPannel.bindEnt(&BGry2);BGPannel.bindEnt(&BGry3);BGPannel.bindEnt(&BGry4);
-	BGPannel.bindEnt(&BGrz1);BGPannel.bindEnt(&BGrz2);BGPannel.bindEnt(&BGrz3);BGPannel.bindEnt(&BGrz4);
+		posXs[i].size.x = posYs[i].size.x = posZs[i].size.x = 40;
+		rotXs[i].size.x = rotYs[i].size.x = rotZs[i].size.x = 40;
 
-	BGLabelLoad.location.y = BGLabelName.location.y = BGLabelX.location.y = BGLabelY.location.y = 
-	  BGLabelZ.location.y = BGLabelDel.location.y = BGLabelSort.location.y = 
-	  BGLabelrX.location.y = BGLabelrY.location.y = BGLabelrZ.location.y = 460;
+		posXs[i].setIntermediatePosition(posXs[i].size.x/2);
+		posYs[i].setIntermediatePosition(posYs[i].size.x/2);
+		posZs[i].setIntermediatePosition(posZs[i].size.x/2);
 
-	BGSort1.location.x = BGSort2.location.x = BGSort3.location.x = BGSort4.location.x = 330;
-	BGSort1.size.x = BGSort2.size.x = BGSort3.size.x = BGSort4.size.x = 30;
-	BGSort1.setBounds(0,16);BGSort2.setBounds(0,16);BGSort3.setBounds(0,16);BGSort4.setBounds(0,16);
-	BGSort1.setOnChange(sort1Change);BGSort2.setOnChange(sort2Change);BGSort3.setOnChange(sort3Change);BGSort4.setOnChange(sort4Change);
+		rotXs[i].setIntermediatePosition(rotXs[i].size.x/2);
+		rotYs[i].setIntermediatePosition(rotYs[i].size.x/2);
+		rotZs[i].setIntermediatePosition(rotZs[i].size.x/2);
 
-	BGSort1.l_value.location.x = BGSort2.l_value.location.x = BGSort3.l_value.location.x = BGSort4.l_value.location.x = BGSort1.location.x + BGSort1.size.x;
-	BGSort1.l_value.location.y = BGSort1.location.y; BGSort2.l_value.location.y = BGSort2.location.y;
-	BGSort3.l_value.location.y = BGSort3.location.y; BGSort4.l_value.location.y = BGSort4.location.y;
-	BGSort1.l_value.txtSize = BGSort2.l_value.txtSize = BGSort3.l_value.txtSize = BGSort4.l_value.txtSize = BGSort1.size.y;
-	BGSort1.useLabelValue = BGSort2.useLabelValue = BGSort3.useLabelValue = BGSort4.useLabelValue = true;
-	BGSort1.setValue(0);BGSort2.setValue(0);BGSort3.setValue(0);BGSort4.setValue(0);
+		posXs[i].setBounds(-256,256,0); posYs[i].setBounds(-256,256,0); posZs[i].setBounds(-256,256,0);		
+		rotXs[i].setBounds(-180,180,0); rotYs[i].setBounds(-180,180,0); rotZs[i].setBounds(-180,180,0);
 
-	BGx1.setValue(0);BGy1.setValue(0);BGz1.setValue(0);
-	BGx2.setValue(0);BGy2.setValue(0);BGz2.setValue(0);
-	BGx3.setValue(0);BGy3.setValue(0);BGz3.setValue(0);
-	BGx4.setValue(0);BGy4.setValue(0);BGz4.setValue(0);
+		posXs[i].setValue(0); posYs[i].setValue(0); posZs[i].setValue(0);
+		rotXs[i].setValue(0); rotYs[i].setValue(0); rotZs[i].setValue(0);
 
-	BGrx1.setValue(0);BGry1.setValue(0);BGrz1.setValue(0);
-	BGrx2.setValue(0);BGry2.setValue(0);BGrz2.setValue(0);
-	BGrx3.setValue(0);BGry3.setValue(0);BGrz3.setValue(0);
-	BGrx4.setValue(0);BGry4.setValue(0);BGrz4.setValue(0);
+		BGPannel.bindEnt(&posXs[i]);BGPannel.bindEnt(&posYs[i]);BGPannel.bindEnt(&posZs[i]);
+		BGPannel.bindEnt(&rotXs[i]);BGPannel.bindEnt(&rotYs[i]);BGPannel.bindEnt(&rotZs[i]);
+		BGPannel.bindEnt(&sorts[i]);
 
-	BGName1.location.x = BGName2.location.x = BGName3.location.x = BGName4.location.x = 200;
-	BGName1.location.y = 447; BGName2.location.y = 432;BGName4.location.y = 402; BGName3.location.y = 417;
+		sorts[i].location.x = 330;
+		sorts[i].size.x = 30;
+		sorts[i].setBounds(0,16);
+		sorts[i].l_value.location.x = sorts[i].location.x + sorts[i].size.x;
+		sorts[i].l_value.location.y = sorts[i].location.y;
+		sorts[i].l_value.txtSize = sorts[i].size.y;
+		sorts[i].useLabelValue = true;
+		sorts[i].setValue(0);
 
-	BGName1.maxSize = BGName2.maxSize = BGName3.maxSize = BGName4.maxSize = 130; //330-170
+		labels[i].location.x = 200;
+		labels[i].location.y = ypos;
+		labels[i].maxSize = 130;
+		labels[i].txtSize = sorts[i].size.y;
 
-	BGName1.txtSize = BGName2.txtSize = BGName3.txtSize = BGName4.txtSize = BGSort1.size.y;
+		BGPannel.bindEnt(&labels[i]);
 
-	//BGName1.setString("Test1-A long long long name");BGName2.setString("Test2");BGName3.setString("Test3");BGName4.setString("Test4");
-	BGPannel.bindEnt(&BGName1);BGPannel.bindEnt(&BGName2);BGPannel.bindEnt(&BGName3);BGPannel.bindEnt(&BGName4);
+		posXs[i].setOnChange( [i](int x) { systems[i].x = x;		});
+		posYs[i].setOnChange( [i](int y) { systems[i].y = y;		});
+		posZs[i].setOnChange( [i](int z) { systems[i].z = z;		});
+		rotXs[i].setOnChange( [i](int x) { systems[i].ps.rotx = x;	}); 	
+		rotYs[i].setOnChange( [i](int y) { systems[i].ps.roty = y;	}); 	
+		rotZs[i].setOnChange( [i](int z) { systems[i].ps.rotz = z;	}); 	
+		sorts[i].setOnChange( [i](int s) { systems[i].sort = s;		});
 
-	BGLabelLoad.setString("Active"); BGLabelLoad.location.x = 120; BGLabelLoad.txtSize = 15; BGPannel.bindEnt(&BGLabelLoad);
-	BGLabelName.setString("Name"); BGLabelName.location.x = 200; BGLabelName.txtSize = 15; BGPannel.bindEnt(&BGLabelName);
-	BGLabelSort.setString("Sort"); BGLabelSort.location.x = 320; BGLabelSort.txtSize = 15; BGPannel.bindEnt(&BGLabelSort);
-	BGLabelX.setString("X"); BGLabelX.location.x = 390; BGLabelX.txtSize = 15; BGPannel.bindEnt(&BGLabelX);
-	BGLabelY.setString("Y"); BGLabelY.location.x = 434; BGLabelY.txtSize = 15; BGPannel.bindEnt(&BGLabelY);
-	BGLabelZ.setString("Z"); BGLabelZ.location.x = 478; BGLabelZ.txtSize = 15; BGPannel.bindEnt(&BGLabelZ);
-	BGLabelrX.setString("\x9DX"); BGLabelrX.location.x = 515; BGLabelrX.txtSize = 15; BGPannel.bindEnt(&BGLabelrX);
-	BGLabelrY.setString("\x9DY"); BGLabelrY.location.x = 560; BGLabelrY.txtSize = 15; BGPannel.bindEnt(&BGLabelrY);
-	BGLabelrZ.setString("\x9DZ"); BGLabelrZ.location.x = 605; BGLabelrZ.txtSize = 15; BGPannel.bindEnt(&BGLabelrZ);
+		ypos-=15;
+	}
 
-  loadDefaultsFromFile();
+	BGPannel.size.y = 25 + MAX_SYSTEMS * 15;		
+	BGPannel.location.y = GL_HEIGHT - BGPannel.size.y;	
+
+	BGLabelLoad.location.y = BGLabelName.location.y = BGLabelX.location.y = BGLabelY.location.y = BGLabelZ.location.y = 
+		BGLabelDel.location.y = BGLabelSort.location.y = BGLabelrX.location.y = BGLabelrY.location.y = BGLabelrZ.location.y = 460;
+	BGLabelLoad.setString("Active");BGLabelLoad.location.x = 120;	BGLabelLoad.txtSize = 15;	BGPannel.bindEnt(&BGLabelLoad);
+	BGLabelName.setString("Name");	BGLabelName.location.x = 200;	BGLabelName.txtSize = 15;	BGPannel.bindEnt(&BGLabelName);
+	BGLabelSort.setString("Sort");	BGLabelSort.location.x = 320;	BGLabelSort.txtSize = 15;	BGPannel.bindEnt(&BGLabelSort);
+	BGLabelX.setString("X");		BGLabelX.location.x = 390;		BGLabelX.txtSize = 15;		BGPannel.bindEnt(&BGLabelX);
+	BGLabelY.setString("Y");		BGLabelY.location.x = 434;		BGLabelY.txtSize = 15;		BGPannel.bindEnt(&BGLabelY);
+	BGLabelZ.setString("Z");		BGLabelZ.location.x = 478;		BGLabelZ.txtSize = 15;		BGPannel.bindEnt(&BGLabelZ);
+	BGLabelrX.setString("\x9DX");	BGLabelrX.location.x = 515;		BGLabelrX.txtSize = 15;		BGPannel.bindEnt(&BGLabelrX);
+	BGLabelrY.setString("\x9DY");	BGLabelrY.location.x = 560;		BGLabelrY.txtSize = 15;		BGPannel.bindEnt(&BGLabelrY);
+	BGLabelrZ.setString("\x9DZ");	BGLabelrZ.location.x = 605;		BGLabelrZ.txtSize = 15;		BGPannel.bindEnt(&BGLabelrZ);
+
+	loadDefaultsFromFile();
   
-  int viewyrot=0;
-  int viewxrot=0;
+	int viewyrot=0;
+	int viewxrot=0;
   
-  RGBf pannelColor;
+	RGBf pannelColor;
   
-  int lastTime = clock();
-  //int nowTime;
+	int lastTime = clock();
+	//int nowTime;
   
-           glViewport (0, 0, rc.right-1, rc.bottom-1);
-         glMatrixMode (GL_PROJECTION);						// Select The Projection Matrix
-         glLoadIdentity ();							// Reset The Projection Matrix
-         // Set Up Ortho Mode To Fit 1/4 The Screen (Size Of A Viewport)
-         gluOrtho2D(0,GL_WIDTH-1,0,GL_HEIGHT-1);
-         glMatrixMode (GL_MODELVIEW);									// Select The Modelview Matrix
-      	 glLoadIdentity ();
+	glViewport (0, 0, rc.right-1, rc.bottom-1);
+	glMatrixMode (GL_PROJECTION);						// Select The Projection Matrix
+	glLoadIdentity ();							// Reset The Projection Matrix
+	// Set Up Ortho Mode To Fit 1/4 The Screen (Size Of A Viewport)
+	gluOrtho2D(0,GL_WIDTH-1,0,GL_HEIGHT-1);
+	glMatrixMode (GL_MODELVIEW);									// Select The Modelview Matrix
+	glLoadIdentity ();
   
-  // program main loop
-  while (!bQuit) 
-    {
-      // check for messages
-      if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) 
-      {
-          // handle or dispatch messages
-          if (msg.message == WM_QUIT) 
-            {
-              bQuit = TRUE;
-            } 
-          else 
-            {
-              TranslateMessage(&msg);
-              DispatchMessage(&msg);
-            }
+	// program main loop
+	while (!bQuit) 
+	{
+		// check for messages
+		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) 
+		{
+			// handle or dispatch messages
+			if (msg.message == WM_QUIT) 
+			{
+				bQuit = TRUE;
+			} 
+			else 
+			{
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+			}
 
-      } 
-	  else if (paused || minimized)  // if paused, stop entering the render loop
-	  { 
-		  Sleep(100);
-	  } 
-      else 
-        {
-          
-          //because height can change by pressing button, we must set it every loop
-          sliderHeight.setValue_nochange((int)systems[activePS].ps.getHeight());
-          sliderFreq.setValue_nochange((int)( 10000*systems[activePS].ps.getFrequency() ));
-          sliderRGBPhase.setValue_nochange((int)( 10000*systems[activePS].ps.getRGBPhase()));
-          sliderAlphaPhase.setValue_nochange((int)( 10000*systems[activePS].ps.getAlphaPhase()));
-          sliderStretchPhase.setValue_nochange((int)( 10000*systems[activePS].ps.getStretchPhase()));
+		} 
+		else if (paused || minimized)  // if paused, stop entering the render loop
+		{ 
+			Sleep(100);
+		} 
+		else 
+		{
+		  
+			//because height can change by pressing button, we must set it every loop
+			sliderHeight.setValue_nochange((int)systems[activePS].ps.getHeight());
+			sliderFreq.setValue_nochange((int)( 10000*systems[activePS].ps.getFrequency() ));
+			sliderRGBPhase.setValue_nochange((int)( 10000*systems[activePS].ps.getRGBPhase()));
+			sliderAlphaPhase.setValue_nochange((int)( 10000*systems[activePS].ps.getAlphaPhase()));
+			sliderStretchPhase.setValue_nochange((int)( 10000*systems[activePS].ps.getStretchPhase()));
 
-		  BGName1.setString(systems[0].shaderName);
-		  BGName2.setString(systems[1].shaderName);
-		  BGName3.setString(systems[2].shaderName);
-		  BGName4.setString(systems[3].shaderName);
-         
-         // OpenGL animation code goes here
-         //glClearColor(bgred, bggreen, bgblue, 0.0f);
-         //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-         
+			//label *BGNameLabels[MAX_SYSTEMS] = { &BGName1,&BGName2,&BGName3,&BGName4,&BGName5,&BGName6,&BGName7,&BGName8 };
 
-         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-         glBindTexture(GL_TEXTURE_2D, texture[0].texID);
-         
-         // Draw background color quad
-          glBegin(GL_QUADS);
-            glColor3f(bgred,bggreen,bgblue);
-            glVertex2i(10,154);
-            glVertex2i(rc.right-3,154);
-            glVertex2i(rc.right-3,485);
-            glVertex2i(10,485);
-          glEnd();
+			for(int i=0;i<MAX_SYSTEMS;i++)
+			{
+				labels[i].setString(systems[i].shaderName);
+			}		 
 
-          // ENT RENDER TAKEN FROM HERE
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glBindTexture(GL_TEXTURE_2D, texture[0].texID);
+		 
+		 // Draw background color quad
+		  glBegin(GL_QUADS);
+			glColor3f(bgred,bggreen,bgblue);
+			glVertex2i(10,154);
+			glVertex2i(rc.right-3,154);
+			glVertex2i(rc.right-3,485);
+			glVertex2i(10,485);
+		  glEnd();
+
+		  // ENT RENDER TAKEN FROM HERE
 
 		  viewyrot = slider1.value;
-          viewxrot = slider2.value;
-          float zoom = (float) sliderZoom.value / 10000;
-          
-          float tempTime = systems[activePS].ps.calcTimeN();
-          char bufferT[15];
-          
-          /*nowTime = clock();
-          tempTime = nowTime - lastTime;
-          tempTime = 1/(tempTime / CLOCKS_PER_SEC);
-          ftoa(tempTime,bufferT);
-          bufferT[3]=0;
-          drawFPS.setString(bufferT);
-          drawFPS.draw();
-          lastTime = nowTime;*/
-          
-          //drawMPos();
-          
-          //textDraw td;
-          //float cx,cy;
-          
-          
-          // Init 3d View
-          
-          glViewport (10, 0, rc.right-20, rc.bottom/*-130*/);
-          glMatrixMode (GL_PROJECTION);						// Select The Projection Matrix
-          glLoadIdentity ();							// Reset The Projection Matrix
-          // Set Up Perspetive Mode To Fit 1/4 The Screen (Size Of A Viewport)
-          gluPerspective( 60.0, (GLfloat)(rc.right-20)/(GLfloat)(rc.bottom/*-130*/), 1.0f, 8192.0 ); 
-          glMatrixMode (GL_MODELVIEW);									// Select The Modelview Matrix
-      	  glLoadIdentity ();
-      	  
-      	  glScissor(10, 145, rc.right-20, rc.bottom-145); // Use scissor to stop from drawing over 2d. 
-      	  glEnable(GL_SCISSOR_TEST);
-      	  
-      	  glEnable(GL_DEPTH_TEST);
-      	  
-      	  // View Translations
-      	  // Then push new matrix to hold sprite position transformations
-      	  // then pop transform matrix      	  
-      	  
-          //glTranslatef(((float)pos.x),((float)pos.y),0.0f);
-          glTranslatef(0.0f, -180.0f * zoom * systems[activePS].ps.zBase + -30.0f * zoom, -512.0f * zoom); // Back and down a bit
-          glRotatef(viewxrot, 1.0f, 0.0f, 0.0f); // Pan up/down
-          glRotatef(viewyrot, 0.0f, 1.0f, 0.0f);  // Pan Arround
-          //glRotatef(180, (float)viewxrot/(float)180, (float)viewyrot/(float)180, 0.0f);  // Pan Arround
-          
-          // AXIS
-          glBegin(GL_LINES);
-            glColor3f(1.0f,0.0f,0.0f);
-            glVertex3f(0.0f,0.0f,0.0f); glVertex3f(16.0,0.0f,0.0f);
-            glColor3f(0.0f,0.0f,1.0f);
-            glVertex3f(0.0f,0.0f,0.0f); glVertex3f(0.0,16.0f,0.0f);
-            glColor3f(0.0f,1.0f,0.0f);
-            glVertex3f(0.0f,0.0f,0.0f); glVertex3f(0.0,0.0f,-16.0f);
-         glEnd();
-         
+		  viewxrot = slider2.value;
+		  float zoom = (float) sliderZoom.value / 10000;
+		  
+		  float tempTime = systems[activePS].ps.calcTimeN();
+		  char bufferT[15];	  
+		  
+		  // Init 3d View
+		  
+		  glViewport (10, 0, rc.right-20, rc.bottom/*-130*/);
+		  glMatrixMode (GL_PROJECTION);						// Select The Projection Matrix
+		  glLoadIdentity ();							// Reset The Projection Matrix
+		  // Set Up Perspetive Mode To Fit 1/4 The Screen (Size Of A Viewport)
+		  gluPerspective( 60.0, (GLfloat)(rc.right-20)/(GLfloat)(rc.bottom/*-130*/), 1.0f, 8192.0 ); 
+		  glMatrixMode (GL_MODELVIEW);									// Select The Modelview Matrix
+		  glLoadIdentity ();
+		  
+		  glScissor(10, 145, rc.right-20, rc.bottom-145); // Use scissor to stop from drawing over 2d. 
+		  glEnable(GL_SCISSOR_TEST);
+		  
+		  glEnable(GL_DEPTH_TEST);
+		  
+		  // View Translations
+		  // Then push new matrix to hold sprite position transformations
+		  // then pop transform matrix      	  
+		  
+		  //glTranslatef(((float)pos.x),((float)pos.y),0.0f);
+		  glTranslatef(0.0f, -180.0f * zoom * systems[activePS].ps.zBase + -30.0f * zoom, -512.0f * zoom); // Back and down a bit
+		  glRotatef(viewxrot, 1.0f, 0.0f, 0.0f); // Pan up/down
+		  glRotatef(viewyrot, 0.0f, 1.0f, 0.0f);  // Pan Arround
+		  //glRotatef(180, (float)viewxrot/(float)180, (float)viewyrot/(float)180, 0.0f);  // Pan Arround
+		  
+		  // AXIS
+		  glBegin(GL_LINES);
+			glColor3f(1.0f,0.0f,0.0f);
+			glVertex3f(0.0f,0.0f,0.0f); glVertex3f(16.0,0.0f,0.0f);
+			glColor3f(0.0f,0.0f,1.0f);
+			glVertex3f(0.0f,0.0f,0.0f); glVertex3f(0.0,16.0f,0.0f);
+			glColor3f(0.0f,1.0f,0.0f);
+			glVertex3f(0.0f,0.0f,0.0f); glVertex3f(0.0,0.0f,-16.0f);
+		 glEnd();
+		 
 		// Draw the player Box
 
-          if (togglePlayer>0)
-          {
-            glPushMatrix();
-            glTranslatef(128,0,0);
-            
-            glBegin(GL_QUADS);
-              glColor3f(1.0f,0.0f,0.0f);
-            
-              //Bottom
-              glVertex3f(-16,0,-16); glVertex3f(-16,0,16); glVertex3f(16,0,16); glVertex3f(16,0,-16);
-              //top
-              glVertex3f(-16,togglePlayer,-16); glVertex3f(-16,togglePlayer,16); glVertex3f(16,togglePlayer,16); glVertex3f(16,togglePlayer,-16);
-              
-              glVertex3f(-16,0,-16);glVertex3f(16,0,-16);glVertex3f(16,togglePlayer,-16);glVertex3f(-16,togglePlayer,-16);
-              glVertex3f(-16,0,16);glVertex3f(16,0,16);glVertex3f(16,togglePlayer,16);glVertex3f(-16,togglePlayer,16);
-              
-              glVertex3f(-16,0,-16);glVertex3f(-16,0,16);glVertex3f(-16,togglePlayer,16);glVertex3f(-16,togglePlayer,-16);
-              glVertex3f(16,0,-16);glVertex3f(16,0,16);glVertex3f(16,togglePlayer,16);glVertex3f(16,togglePlayer,-16);
-            
-            glEnd();
-            
-            glPopMatrix();
-          }
-         
-          // Draw Particles
-          
-          //ps.calcTimeN();          
-          glEnable(GL_BLEND);
-          glEnable(GL_TEXTURE_2D);
-          //glDisable(GL_DEPTH_TEST);
-          glDepthMask(GL_FALSE);
-
-
-		  //// Draw Particle system Block
-		  /// MAJOR QUESTION NOW::: Do I give each system a sort order?
-          /*
-          float px,py,pz;
-          int np = systems[activePS].ps.numParticles;
-          while (np)
-          {
-            glPushMatrix();
-            np--;
-            systems[activePS].ps.getPositionVector(np,px,py,pz);            
-            glTranslatef(px, pz, -py);
-            glRotatef(-viewyrot, 0.0f, 1.0f, 0.0f);  // Pan Arround
-            glRotatef(-viewxrot, 1.0f, 0.0f, 0.0f); // Pan up/down
-            glBindTexture(GL_TEXTURE_2D, texture[0].texID);
-            systems[activePS].ps.drawParticle(np);
-            glPopMatrix();
-		  }
-
-		  // Finished Drawing Active Particle System
-
-		  // Draw other particle systems here, Remember to change teh texture
-
-		  /*for (int i=0;i<4;i++)
+		  if (togglePlayer>0)
 		  {
-			  if (bgParticles[i].active)
-			  {
-				  glPushMatrix();     				  
-				  glTranslatef(bgParticles[i].x,bgParticles[i].z,-bgParticles[i].y);
-				  np = bgParticles[i].ps.numParticles;
-				  bgParticles[i].ps.calcTimeN();
-				  while(np)
-				  {
-					glPushMatrix();
-					np--;
-					bgParticles[i].ps.getPositionVector(np,px,py,pz);            
-					glTranslatef(px, pz, -py);
-					glRotatef(-viewyrot, 0.0f, 1.0f, 0.0f);  // Pan Arround
-					glRotatef(-viewxrot, 1.0f, 0.0f, 0.0f); // Pan up/down
-					glBindTexture(GL_TEXTURE_2D, texture[i+2].texID);
-					bgParticles[i].ps.drawParticle(np);
-					glPopMatrix();
-				  }
-				  glPopMatrix();
-			  }
-		  }*/
+			glPushMatrix();
+			glTranslatef(128,0,0);
+			
+			glBegin(GL_QUADS);
+			  glColor3f(1.0f,0.0f,0.0f);
+			
+			  //Bottom
+			  glVertex3f(-16,0,-16); glVertex3f(-16,0,16); glVertex3f(16,0,16); glVertex3f(16,0,-16);
+			  //top
+			  glVertex3f(-16,togglePlayer,-16); glVertex3f(-16,togglePlayer,16); glVertex3f(16,togglePlayer,16); glVertex3f(16,togglePlayer,-16);
+			  
+			  glVertex3f(-16,0,-16);glVertex3f(16,0,-16);glVertex3f(16,togglePlayer,-16);glVertex3f(-16,togglePlayer,-16);
+			  glVertex3f(-16,0,16);glVertex3f(16,0,16);glVertex3f(16,togglePlayer,16);glVertex3f(-16,togglePlayer,16);
+			  
+			  glVertex3f(-16,0,-16);glVertex3f(-16,0,16);glVertex3f(-16,togglePlayer,16);glVertex3f(-16,togglePlayer,-16);
+			  glVertex3f(16,0,-16);glVertex3f(16,0,16);glVertex3f(16,togglePlayer,16);glVertex3f(16,togglePlayer,-16);
+			
+			glEnd();
+			
+			glPopMatrix();
+		  }
+		 
+		  // Draw Particles
+		  
+		  //ps.calcTimeN();          
+		  glEnable(GL_BLEND);
+		  glEnable(GL_TEXTURE_2D);
+		  //glDisable(GL_DEPTH_TEST);
+		  glDepthMask(GL_FALSE);
 
 		  // Rewrite the particle render with sort order
 		  float px,py,pz;
-          int np;
+		  int np;
 		  //glBindTexture(GL_TEXTURE_2D, 1);
 		  for (int order=0;order!=17;order++)
 		  {
@@ -4962,98 +4604,126 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 					  // Render system
 					  if (systems[i].active)
 					  {
-						  glPushMatrix();     				  
-						  glTranslatef(systems[i].x,systems[i].z,-systems[i].y);
-						  np = systems[i].ps.numParticles;
-						  systems[i].ps.calcTimeN();
-						  while(np)
+						  float duration = 1.f / systems[i].ps.getFrequency();
+						  if(tempTime < duration || particleSystem::getOnce() == false)
 						  {
-							glPushMatrix();
-							np--;
-							systems[i].ps.getPositionVector(np,px,py,pz);            
-							systems[i].ps.applyRotation(px,py,pz);
-							glTranslatef(px, pz, -py);
-							glRotatef(-viewyrot, 0.0f, 1.0f, 0.0f);  // Pan Arround
-							glRotatef(-viewxrot, 1.0f, 0.0f, 0.0f); // Pan up/down
-							glBindTexture(GL_TEXTURE_2D, systems[i].texture.texID);
-							systems[i].ps.drawParticle(np);
-							glPopMatrix();
+								glPushMatrix();     				  
+								glTranslatef(systems[i].x,systems[i].z,-systems[i].y);
+								np = systems[i].ps.numParticles;
+								systems[i].ps.calcTimeN();
+								while(np)
+								{
+									glPushMatrix();
+									np--;
+									systems[i].ps.getPositionVector(np,px,py,pz);            
+									systems[i].ps.applyRotation(px,py,pz);
+									glTranslatef(px, pz, -py);
+									glRotatef(-viewyrot, 0.0f, 1.0f, 0.0f);  // Pan Arround
+									glRotatef(-viewxrot, 1.0f, 0.0f, 0.0f); // Pan up/down
+									glBindTexture(GL_TEXTURE_2D, systems[i].texture.texID);
+									systems[i].ps.drawParticle(np);
+									glPopMatrix();
+								}
+								glPopMatrix();
 						  }
-						  glPopMatrix();
+						  else
+						  {
+
+						  }
 					  }
 				  }
 			  }
 		  }
-          
-          glDisable(GL_BLEND);
-          glDisable(GL_TEXTURE_2D);
-          //glEnable(GL_DEPTH_TEST);
-          glDepthMask(GL_TRUE);
-          
-          glDisable(GL_SCISSOR_TEST);
-          glDisable(GL_DEPTH_TEST);
-          
-          glViewport (0, 0, rc.right-1, rc.bottom-1);
-          glMatrixMode (GL_PROJECTION);						// Select The Projection Matrix
-          glLoadIdentity ();							// Reset The Projection Matrix
-          // Set Up Ortho Mode To Fit 1/4 The Screen (Size Of A Viewport)
-          gluOrtho2D(0,GL_WIDTH-1,0,GL_HEIGHT-1);
-          glMatrixMode (GL_MODELVIEW);									// Select The Modelview Matrix
-      	  glLoadIdentity ();
+		  
+		  glDisable(GL_BLEND);
+		  glDisable(GL_TEXTURE_2D);
+		  //glEnable(GL_DEPTH_TEST);
+		  glDepthMask(GL_TRUE);
+		  
+		  glDisable(GL_SCISSOR_TEST);
+		  glDisable(GL_DEPTH_TEST);
+		  
+		  glViewport (0, 0, rc.right-1, rc.bottom-1);
+		  glMatrixMode (GL_PROJECTION);						// Select The Projection Matrix
+		  glLoadIdentity ();							// Reset The Projection Matrix
+		  // Set Up Ortho Mode To Fit 1/4 The Screen (Size Of A Viewport)
+		  gluOrtho2D(0,GL_WIDTH-1,0,GL_HEIGHT-1);
+		  glMatrixMode (GL_MODELVIEW);									// Select The Modelview Matrix
+		  glLoadIdentity ();
 
 
 		  // DRAW USERENTRY!
-      	  glBindTexture(GL_TEXTURE_2D, texture[0].texID);
+		  glBindTexture(GL_TEXTURE_2D, texture[0].texID);
 
 		  // Move Drawing entities here
 
 		  //Pannel
-          if (currentTab) currentTab->getColor(pannelColor.R,pannelColor.G,pannelColor.B,TAB_COLOR_ACTIVE);
-          else pannelColor.R = pannelColor.G = pannelColor.B = 0.6f;
-          glBegin(GL_QUADS);
-            glColor3f( pannelColor.R, pannelColor.G, pannelColor.B );
-            glVertex2f((0),(15));
-            glVertex2f((0),(130));
-            glVertex2f((639),(130));
-            glVertex2f((639),(15));         
-          glEnd();
+		  if (currentTab) currentTab->getColor(pannelColor.R,pannelColor.G,pannelColor.B,TAB_COLOR_ACTIVE);
+		  else pannelColor.R = pannelColor.G = pannelColor.B = 0.6f;
+		  glBegin(GL_QUADS);
+			glColor3f( pannelColor.R, pannelColor.G, pannelColor.B );
+			glVertex2f((0),(15));
+			glVertex2f((0),(130));
+			glVertex2f((639),(130));
+			glVertex2f((639),(15));         
+		  glEnd();
 		  // draw side pannel
 		  if (BGPannel.active)
 		  {
 				glBegin(GL_QUADS);
-				    glColor3f( pannelColor.R, pannelColor.G, pannelColor.B );
-					glVertex2f((BGPannel.location.x),(BGPannel.location.y));
+					glColor3f( pannelColor.R, pannelColor.G, pannelColor.B );
+					glVertex2f((BGPannel.location.x)				,(BGPannel.location.y));
 					glVertex2f((BGPannel.location.x+BGPannel.size.x),(BGPannel.location.y));
 					glVertex2f((BGPannel.location.x+BGPannel.size.x),(BGPannel.location.y+BGPannel.size.y));
-					glVertex2f((BGPannel.location.x),(BGPannel.location.y+BGPannel.size.x));         
+					glVertex2f((BGPannel.location.x)				,(BGPannel.location.y+BGPannel.size.y));         
 				glEnd();
 		  }
 
 		  //glEnable(GL_TEXTURE_2D);          
-          
-           // Set texture to text map
-          entities.drawAll(); // Draw all bound entities
-          
-          //glDisable(GL_TEXTURE_2D);
+		  
+		   // Set texture to text map
+		  entities.drawAll(); // Draw all bound entities
+		  
+		  //glDisable(GL_TEXTURE_2D);
 
-          ftoa(tempTime,bufferT);
-          //removeTrailingZeros(bufferT);
-          bufferT[6]=0;
-          drawTime.setString(bufferT);
-          drawTime.draw();
+		  ftoa(tempTime,bufferT);
+		  //removeTrailingZeros(bufferT);
+		  bufferT[6]=0;
+		  drawTime.setString(bufferT);
+		  drawTime.draw();
 
+		  glEnable(GL_BLEND);
+		  glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+		  //IF ACTIVE: DRAW
+		  if (entry.active) entry.draw();
+		  glDisable(GL_BLEND);
+			  
+		  SwapBuffers( hDC );
+		  //theta += 0.2f;
 
+		  if(particleSystem::getOnce() == true)
+		  {
 
-      	  glEnable(GL_BLEND);
-      	  glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-      	  //IF ACTIVE: DRAW
-      	  if (entry.active) entry.draw();
-      	  glDisable(GL_BLEND);
-              
-          SwapBuffers( hDC );
-          //theta += 0.2f;
-          
-        }
+			  float smallestFreq = 100000;
+
+			  for (auto &sy : systems)
+			  {
+				  if(sy.active)
+					if(sy.ps.getFrequency() < smallestFreq) smallestFreq = sy.ps.getFrequency();
+			  }
+
+			  // get max duration
+
+			  float maxDuration = 1.f / smallestFreq;
+
+			  if(tempTime+(0.01*maxDuration) >= maxDuration)		// Run to completion reset the time
+				  particleSystem::resetTime();
+
+		  }
+
+		  // get the smallest particle system frequency 
+		  
+		} // End Render Block
   }
   
   //saveSettings();
@@ -5066,40 +4736,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
   return msg.wParam;
 }
 
-/*
-#define WM_MOUSEACTIVATE 33
-#define WM_MOUSEMOVE 512
-#define WM_LBUTTONDOWN 513
-#define WM_LBUTTONUP 514
-#define WM_LBUTTONDBLCLK 515
-#define WM_RBUTTONDOWN 516
-#define WM_RBUTTONUP 517
-#define WM_RBUTTONDBLCLK 518
-#define WM_MBUTTONDOWN 519
-#define WM_MBUTTONUP 520
-#define WM_MBUTTONDBLCLK 521
-#define WM_MOUSEWHEEL 522
-#define WM_MOUSEFIRST 512
-#define WM_MOUSELAST 522
-#define WM_MOUSEHOVER	0x2A1
-#define WM_MOUSELEAVE	0x2A3
-*/
-
 // Window Procedure
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    // Only change mouse coords on mouse move, LMB up/down    
-    if ((message == WM_MOUSEMOVE) || (message == WM_LBUTTONDOWN) || (message == WM_LBUTTONUP) || (message == WM_RBUTTONDOWN) )
-    {
-      int mx,my;        
-      mx = (int) (lParam & 0x0000ffff);        
-      my = (int) ((lParam >> 16) & 0x0000ffff);    
-      mouse.x = mx;
-      mouse.y = my;
-      scr2w(); 
-    }
-    //LRESULT res;
+	// Only change mouse coords on mouse move, LMB up/down    
+	if ((message == WM_MOUSEMOVE) || (message == WM_LBUTTONDOWN) || (message == WM_LBUTTONUP) || (message == WM_RBUTTONDOWN) )
+	{
+	  int mx,my;        
+	  mx = (int) (lParam & 0x0000ffff);        
+	  my = (int) ((lParam >> 16) & 0x0000ffff);    
+	  mouse.x = mx;
+	  mouse.y = my;
+	  scr2w(); 
+	}
+	//LRESULT res;
 
 	if (!BGPannel.inBounds(pos.x,pos.y) && (message == WM_LBUTTONDOWN) && (BGPannel.active) && (entry.active==false)) 
 	{
@@ -5108,16 +4759,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		hideSidePannelBut = false;
 	}
-       
+	   
   switch (message) 
-    {
-      case WM_CREATE:
-        return 0;
+	{
+	  case WM_CREATE:
+		return 0;
 
-      case WM_CLOSE:
-        //save settings
-        PostQuitMessage( 0 );
-        return 0;
+	  case WM_CLOSE:
+		//save settings
+		PostQuitMessage( 0 );
+		return 0;
 
 	  case WM_SIZE:
 		  switch (wParam)
@@ -5130,49 +4781,54 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		  }
 		  return 0;
 
-      case WM_DESTROY:
-        return 0;
-        
-      case WM_SETFOCUS:
-        entities.forceUnActive(); // Remove Any Active State
-        return 0;
-        
-      case WM_KILLFOCUS:
-      entities.forceUnActive(); // Remove Any Active State
-        return 0;
-        
+	  case WM_DESTROY:
+		return 0;
+		
+	  case WM_SETFOCUS:
+		entities.forceUnActive(); // Remove Any Active State
+		return 0;
+		
+	  case WM_KILLFOCUS:
+		entities.forceUnActive(); // Remove Any Active State		
+		return 0;
+		
 
-        default:
+		default:
 		  if ((message == WM_KEYDOWN) && (wParam == VK_F5)) 
 		  {
 			  paused ^= 1; // toggle paused on f5
 		  }
-          if (entry.active) entry.eventHandler(message,wParam,pos.x,pos.y);
-          else 
+		  if((message == WM_KEYDOWN) && (wParam == VK_SHIFT))
+		  {
+			  syncChanges = true;
+			  butBGPS.setColor(1.f,0.f,0.f);
+			  //OutputDebugString("Sync: ON\n");
+		  }
+		  if((message == WM_KEYUP) && (wParam == VK_SHIFT))
+		  {
+			  syncChanges = false;
+			  butBGPS.setColor(.5f,.5f,.5f);
+			  //OutputDebugString("Sync: OFF\n");
+		  }
+		  if (entry.active) entry.eventHandler(message,wParam,pos.x,pos.y);
+		  else 
 		  {
 			  // Reset the timer when clicked on
 			  if (message == WM_LBUTTONDOWN)
 			  {
 				  //Timer bounds: 28,18    101,32
-				  if ((mouse.x >= 28) 
-					&& (mouse.x <= 101) 
-					&& (mouse.y >= 18) 
-					&& (mouse.y <= 32)) 
+				  
+				  if ((pos.x >= drawTime.location.x) 
+					&& (pos.x <= drawTime.location.x + drawTime.size.x)
+					&& (pos.y >= drawTime.location.y) 
+					&& (pos.y <= drawTime.location.y + drawTime.size.y))
 				  {
-					  systems[0].ps.resetTime();
-					  systems[1].ps.resetTime();
-					  systems[2].ps.resetTime();
-					  systems[3].ps.resetTime();
+					  particleSystem::resetTime();
 				  }
 			  }
 			  entities.eventRelay(message,wParam,pos.x,pos.y);
 		  }
-		  /*if (hideSidePannelBut == true) 
-		  {
-			  entities.unbindEnt(&butBGPS);
-			  entities.active = entities.hoverActive = entities.lastActive = -1; // NOTE:: I won't be supprised if this line was the problem!
-		  }*/
-          return DefWindowProc(hWnd, message, wParam, lParam);
+		  return DefWindowProc(hWnd, message, wParam, lParam);
   }
 }
 
@@ -5212,28 +4868,3 @@ VOID DisableOpenGL( HWND hWnd, HDC hDC, HGLRC hRC )
   wglDeleteContext( hRC );
   ReleaseDC( hWnd, hDC );
 } 
-
-/* TODO (Jonathan#2#): Things to do for Beta 0.2
-                                             
-                       A Texture Holder Class - multi textures in one place
-							- methods to get and store textures
-							- need to know number of textures in the current holder
-                       */
-                       
-                       
-/*
-2.0.b2 Done:
-	Export to .shader file
-	Save now prompts before overwriting
-	Mulisystem load/save
-	Tweaked button colours (a bit)
-	pause button, or minimize/pause when minimize
-	Timer reset when clicking on timer?
-*/
-
-
-/*
-Still todo:
-  fullscreen? / resizeable screen
-
-*/

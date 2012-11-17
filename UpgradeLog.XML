@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?><?xml-stylesheet type='text/xsl' href='_UpgradeReport_Files/UpgradeReport.xslt'?><UpgradeLog>
+<Properties><Property Name="Solution" Value="Particle Studio">
+</Property><Property Name="Solution File" Value="C:\Users\User\Documents\GitHub\New-Quake-3-Particle-Studio\Particle Studio.sln">
+</Property><Property Name="Date" Value="17 June 2012">
+</Property><Property Name="Time" Value="14:37">
+</Property></Properties><Event ErrorLevel="0" Project="Particle Studio" Source="Particle Studio.vcproj" Description="Converting project file 'C:\Users\User\Documents\GitHub\New-Quake-3-Particle-Studio\Particle Studio.vcproj'.">
+</Event><Event ErrorLevel="1" Project="Particle Studio" Source="Particle Studio.vcproj" Description="VCWebServiceProxyGeneratorTool is no longer supported. The tool has been removed from your project settings.">
+</Event><Event ErrorLevel="0" Project="Particle Studio" Source="Particle Studio.vcproj" Description="Done converting to new project file 'C:\Users\User\Documents\GitHub\New-Quake-3-Particle-Studio\Particle Studio.vcxproj'.">
+</Event><Event ErrorLevel="3" Project="Particle Studio" Source="Particle Studio.vcproj" Description="Converted">
+</Event><Event ErrorLevel="0" Project="" Source="Particle Studio.sln" Description="Solution converted successfully">
+</Event><Event ErrorLevel="3" Project="" Source="Particle Studio.sln" Description="Converted">
+</Event></UpgradeLog>

@@ -92,7 +92,7 @@ int BuildTexture(char *szPathName, GLuint &texid)						// Load Image And Convert
 	SelectObject(hdcTemp, hbmpTemp);									// Select Handle To Our Temp DC And Our Temp Bitmap Object
 
 	// Render The IPicture On To The Bitmap
-	pPicture->Render(hdcTemp, 0, 0, lWidthPixels, lHeightPixels, 0, lHeight, lWidth, -lHeight, 0);
+	pPicture->Render(hdcTemp, 0, 0, lWidthPixels, lHeightPixels, 0, lHeight, lWidth, -lHeight, (LPCRECT)0);
 
 	// Convert From BGR To RGB Format And Add An Alpha Value Of 255
 	for(long i = 0; i < lWidthPixels * lHeightPixels; i++)				// Loop Through All Of The Pixels
